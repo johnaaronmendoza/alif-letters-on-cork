@@ -71,7 +71,7 @@ export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin
         <X className="h-5 w-5" />
       </button>
 
-      <div className="relative flex min-h-full items-center justify-center px-5 py-16">
+      <div className="relative flex min-h-full items-center justify-center px-5 py-12">
         <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl">
           <AnimatePresence mode="wait">
             {stage !== "open" ? (
@@ -244,7 +244,10 @@ function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
   const card = useSrc(hasCard ? letter.photo_url : null);
   return (
     <motion.div
-      className="relative"
+      className="relative mx-auto"
+      // the page is 3:4, so size it by the window height: it fits without scrolling.
+      // 12rem = outer padding (6rem) + "from" label (~2.5rem) + the panel's padding (3.5rem)
+      style={canvas ? { width: "min(100%, calc((100svh - 12rem) * 0.75 + 3.5rem))" } : undefined}
       initial={{ y: 60, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
