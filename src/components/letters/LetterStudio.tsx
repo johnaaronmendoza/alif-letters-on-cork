@@ -25,6 +25,9 @@ const MAX_AUDIO = 10 * 1024 * 1024;
 
 export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]; onClose: () => void; onPinned: (l: Letter) => void }) {
   const [from, setFrom] = useState("");
+  const fromInput = useRef<HTMLInputElement>(null);
+  const [nameNudge, setNameNudge] = useState(0); // bumps to shake the name field
+  const askedName = useRef(false);
   const [els, setEls] = useState<CanvasEl[]>([]);
   const elsRef = useRef(els);
   elsRef.current = els;
@@ -179,6 +182,14 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   // ── publish ────────────────────────────────────────────────
   const publish = async () => {
     if (!els.length && !(photocard && cardSrc)) { toast.error("add something to your letter first ♡"); return; }
+    // the first time someone pins without a name, point them to it once; a second tap sends it anonymously
+    if (!from.trim() && !askedName.current) {
+      askedName.current = true;
+      setNameNudge((n) => n + 1);
+      fromInput.current?.focus();
+      toast("add your name so Alif knows who it's from — or tap PIN IT again to stay anonymous");
+      return;
+    }
     setBusy(true);
     setSelected(null);
     try {
@@ -244,14 +255,30 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
         {/* top bar */}
         <header className="flex items-center gap-2 border-b border-black/10 px-3 py-2 sm:px-5 sm:py-3">
           <IconBtn label="back" onClick={requestClose}><ArrowLeft className="h-5 w-5" /></IconBtn>
-          <label className="flex min-w-0 flex-1 items-baseline gap-1.5 text-lg sm:text-xl">
-            <span className="shrink-0 text-ink/50">from</span>
-            <input
-              value={from} onChange={(e) => setFrom(e.target.value)} maxLength={60} placeholder="…"
-              aria-label="from"
-              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-ink/30"
-            />
-          </label>
+          <div className="min-w-0 flex-1">
+            {/* name tag: who the letter is from */}
+            <motion.label
+              key={nameNudge}
+              animate={nameNudge ? { x: [0, -8, 7, -5, 3, 0] } : {}}
+              transition={{ duration: 0.4 }}
+              className={`group relative flex w-full max-w-sm min-h-11 cursor-text items-center gap-2 rounded-xl border-2 px-3 transition-colors duration-200 focus-within:border-[#4a4541] focus-within:bg-white ${from.trim() ? "border-transparent bg-[#f6e7a6]/60" : "border-dashed border-[#d9b84a] bg-[#f6e7a6]"}`}
+            >
+              {!from.trim() && (
+                // soft pulse while empty, so it's hard to miss
+                <motion.span aria-hidden className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-[#e6c84f]"
+                  animate={{ opacity: [0, 0.9, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }} />
+              )}
+              <Pencil className="h-4 w-4 shrink-0 text-ink/60" aria-hidden />
+              <span className="shrink-0 font-typewriter text-sm uppercase tracking-[0.12em] text-ink/70">from</span>
+              <input
+                ref={fromInput}
+                value={from} onChange={(e) => setFrom(e.target.value)} maxLength={60}
+                placeholder="your name"
+                aria-label="who is this letter from? your name"
+                className="min-w-0 flex-1 bg-transparent font-hand text-xl text-ink outline-none placeholder:text-ink/40 sm:text-2xl"
+              />
+            </motion.label>
+          </div>
           <IconBtn label="undo" onClick={undo} disabled={!canUndo}><Undo2 className="h-5 w-5" /></IconBtn>
           <IconBtn label="redo" onClick={redo} disabled={!canRedo}><Redo2 className="h-5 w-5" /></IconBtn>
           <IconBtn label="clear the letter" className="hidden sm:grid" disabled={!els.length} onClick={() => { if (confirm("clear everything on this letter?")) { commit([]); setSelected(null); } }}><Trash2 className="h-5 w-5" /></IconBtn>
