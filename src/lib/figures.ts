@@ -9,8 +9,9 @@
 export type Figure = { src: string; alt: string; x: number; y: string; w: number; rotation: number };
 
 export const FIGURES: Figure[] = [
-  { src: "/figures/mints.webp", alt: "a tin of Eclipse mints", x: 33, y: "14px", w: 8.5, rotation: -6 },
-  { src: "/figures/money-gun.webp", alt: "a money gun spraying cash", x: 74, y: "12px", w: 8, rotation: -8 },
-  { src: "/figures/cigarettes.webp", alt: "a pack of Gudang Garam with a lighter", x: 91.5, y: "42%", w: 7, rotation: 7 },
-  { src: "/figures/doll.webp", alt: "a little doll figure", x: 12, y: "calc(100% - 10px)", w: 8, rotation: 0 },
+  // one in each corner, hanging slightly off the frame
+  { src: "/figures/money-gun.webp", alt: "a money gun spraying cash", x: 8.5, y: "18px", w: 8.5, rotation: -10 },
+  { src: "/figures/cigarettes.webp", alt: "a pack of Gudang Garam with a lighter", x: 91.5, y: "22px", w: 10.5, rotation: 8 },
+  { src: "/figures/doll.webp", alt: "a little doll figure", x: 8, y: "calc(100% - 2px)", w: 8.5, rotation: -3 },
+  { src: "/figures/mints.webp", alt: "a tin of Eclipse mints", x: 91.5, y: "calc(100% - 6px)", w: 9, rotation: -8 },
 ];
