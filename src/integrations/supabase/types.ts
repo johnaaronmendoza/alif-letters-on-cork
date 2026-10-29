@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      letters: {
+        Row: {
+          board_x: number
+          board_y: number
+          body: string
+          browser_id: string | null
+          created_at: string
+          font: string
+          from_name: string
+          id: string
+          ink_color: string
+          open_when_label: string
+          paper_style: string
+          photo_url: string | null
+          pin_color: string
+          rotation: number
+          seal_color: string
+          seal_symbol: string
+          signature_url: string | null
+          stickers: Json
+          unlock_at: string | null
+        }
+        Insert: {
+          board_x?: number
+          board_y?: number
+          body?: string
+          browser_id?: string | null
+          created_at?: string
+          font?: string
+          from_name?: string
+          id?: string
+          ink_color?: string
+          open_when_label?: string
+          paper_style?: string
+          photo_url?: string | null
+          pin_color?: string
+          rotation?: number
+          seal_color?: string
+          seal_symbol?: string
+          signature_url?: string | null
+          stickers?: Json
+          unlock_at?: string | null
+        }
+        Update: {
+          board_x?: number
+          board_y?: number
+          body?: string
+          browser_id?: string | null
+          created_at?: string
+          font?: string
+          from_name?: string
+          id?: string
+          ink_color?: string
+          open_when_label?: string
+          paper_style?: string
+          photo_url?: string | null
+          pin_color?: string
+          rotation?: number
+          seal_color?: string
+          seal_symbol?: string
+          signature_url?: string | null
+          stickers?: Json
+          unlock_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
