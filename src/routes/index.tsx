@@ -31,25 +31,33 @@ function Room() {
   const [muted, setMuted] = useState(false);
   const mutedRef = useRef(false);
   mutedRef.current = muted;
+  const knownIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setMuted(localStorage.getItem("alif-muted") === "1");
-    supabase.from("letters").select("*").order("created_at").then(({ data }) => data && setLetters(data));
+    supabase.from("letters").select("*").order("created_at").then(({ data }) => {
+      if (!data) return;
+      data.forEach((l) => knownIds.current.add(l.id));
+      setLetters(data);
+    });
     const ch = supabase
       .channel(`letters-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "letters" }, (p) => addLetter(p.new as Letter))
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "letters" }, (p) => setLetters((ls) => ls.filter((l) => l.id !== (p.old as Letter).id)))
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "letters" }, (p) => {
+        const id = (p.old as Letter).id;
+        knownIds.current.delete(id);
+        setLetters((ls) => ls.filter((l) => l.id !== id));
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
 
   function addLetter(l: Letter) {
-    setLetters((ls) => {
-      if (ls.some((x) => x.id === l.id)) return ls;
-      setNewIds((s) => new Set(s).add(l.id));
-      setTimeout(() => !mutedRef.current && playThunk(), 550);
-      return [...ls, l];
-    });
+    if (knownIds.current.has(l.id)) return;
+    knownIds.current.add(l.id);
+    setNewIds((s) => new Set(s).add(l.id));
+    setLetters((ls) => (ls.some((x) => x.id === l.id) ? ls : [...ls, l]));
+    setTimeout(() => !mutedRef.current && playThunk(), 550);
   }
 
   const onPinned = (l: Letter) => {
@@ -87,14 +95,18 @@ function Room() {
           <div className="relative mx-auto w-[900px] max-w-none sm:w-[80%] sm:min-w-[640px]">
             <div className="frame rounded-md p-[2.2%]">
               <div className="cork relative aspect-[16/10] w-full overflow-hidden rounded-sm">
-                {/* decorative pins + sticky note */}
-                <span className="absolute left-[30%] top-[8%]"><Pin color="#9CC9E8" /></span>
-                <span className="absolute left-[64%] top-[86%]"><Pin color="#F6E27A" /></span>
-                <span className="absolute left-[88%] top-[12%]"><Pin color="#D7263D" /></span>
-                <div className="absolute left-[42%] top-[38%] w-[16%] min-w-[110px] rotate-3 bg-butter p-3 font-hand text-lg leading-tight text-ink shadow-item">
-                  <span className="absolute -top-2 left-1/2 h-4 w-3/5 -translate-x-1/2 -rotate-2 bg-tape opacity-80" />
-                  pin something for alif :)
-                </div>
+                {/* decorative pins + sticky note — only while the board is still mostly empty */}
+                {letters.length < 6 && (
+                  <>
+                    <span className="absolute left-[30%] top-[8%]"><Pin color="#9CC9E8" /></span>
+                    <span className="absolute left-[64%] top-[86%]"><Pin color="#F6E27A" /></span>
+                    <span className="absolute left-[88%] top-[12%]"><Pin color="#D7263D" /></span>
+                    <div className="absolute left-[42%] top-[38%] w-[16%] min-w-[110px] rotate-3 bg-butter p-3 font-hand text-lg leading-tight text-ink shadow-item">
+                      <span className="absolute -top-2 left-1/2 h-4 w-3/5 -translate-x-1/2 -rotate-2 bg-tape opacity-80" />
+                      pin something for alif :)
+                    </div>
+                  </>
+                )}
                 {letters.map((l) => (
                   <BoardItem key={l.id} letter={l} isNew={newIds.has(l.id)} onOpen={() => setOpen(l)} />
                 ))}

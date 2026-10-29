@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   FONTS, INK_COLORS, OPEN_WHEN, PAPER_STYLES, PIN_COLORS, SEAL_COLORS, SEAL_SYMBOLS, STICKERS,
-  getBrowserId, pickBoardSpot, uploadMedia, type Letter, type Sticker,
+  getBrowserId, pickBoardSpot, sealText, uploadMedia, type Letter, type Sticker,
 } from "@/lib/letters";
 import { LetterPaper, paperBg, type PaperData } from "./LetterPaper";
 
@@ -41,8 +41,15 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
     if (!d.body.trim()) { setStep("write"); toast.error("write alif something first ♡"); return; }
     setBusy(true);
     try {
-      const photo_url = photo ? await uploadMedia("photos", photo, photo.name.split(".").pop() || "jpg") : null;
-      const signature_url = sig ? await uploadMedia("signatures", await (await fetch(sig)).blob(), "png") : null;
+      let photo_url: string | null = null;
+      let signature_url: string | null = null;
+      try {
+        photo_url = photo ? await uploadMedia("photos", photo, photo.name.split(".").pop() || "jpg") : null;
+        signature_url = sig ? await uploadMedia("signatures", await (await fetch(sig)).blob(), "png") : null;
+      } catch {
+        toast.error("couldn't upload your photo or signature — remove them and try again?");
+        return;
+      }
       const spot = pickBoardSpot(letters);
       const { data, error } = await supabase.from("letters").insert({
         from_name: d.from_name.trim().slice(0, 60) || "anonymous",
@@ -139,7 +146,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                 <>
                   <Field label="wax seal">
                     <div className="flex items-center gap-4">
-                      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-2xl text-primary-foreground shadow-pin" style={{ background: sealColor }}>{sealSymbol}</span>
+                      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-2xl shadow-pin" style={{ background: sealColor, color: sealText(sealColor) }}>{sealSymbol}</span>
                       <div className="space-y-2">
                         <Swatches colors={SEAL_COLORS} value={sealColor} onChange={setSealColor} />
                         <div className="flex gap-1">{SEAL_SYMBOLS.map((s) => <button key={s} onClick={() => setSealSymbol(s)} className={`grid h-8 w-8 place-items-center rounded-full ${sealSymbol === s ? "bg-ink text-cream" : "bg-ink/5"}`}>{s}</button>)}</div>
@@ -198,7 +205,7 @@ function SignaturePad({ onChange, ink }: { onChange: (url: string | null) => voi
       <canvas
         ref={ref} width={600} height={180}
         className="w-full touch-none rounded-md border border-dashed border-ink/30 bg-card"
-        onPointerDown={(e) => { drawing.current = true; const c = ref.current!.getContext("2d")!; const [x = 0, y = 0] = pos(e); c.beginPath(); c.moveTo(x, y); }}
+        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); drawing.current = true; const c = ref.current!.getContext("2d")!; const [x = 0, y = 0] = pos(e); c.beginPath(); c.moveTo(x, y); }}
         onPointerMove={(e) => {
           if (!drawing.current) return;
           const c = ref.current!.getContext("2d")!; const [x = 0, y = 0] = pos(e);

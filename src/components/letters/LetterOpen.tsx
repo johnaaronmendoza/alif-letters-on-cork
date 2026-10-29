@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Lock, X } from "lucide-react";
-import { countdown, isLocked, type Letter, type Sticker } from "@/lib/letters";
+import { countdown, isLocked, sealText, type Letter, type Sticker } from "@/lib/letters";
 import { LetterPaper } from "./LetterPaper";
 
 export function LetterOpen({ letter, onClose }: { letter: Letter; onClose: () => void }) {
@@ -67,8 +67,8 @@ export function LetterOpen({ letter, onClose }: { letter: Letter; onClose: () =>
                     whileHover={locked ? {} : { scale: 1.1 }}
                     animate={locked ? {} : { rotate: [0, -4, 4, 0] }}
                     transition={{ repeat: Infinity, repeatDelay: 2, duration: 0.5 }}
-                    className="grid h-20 w-20 place-items-center rounded-full text-3xl text-primary-foreground shadow-pin"
-                    style={{ background: `radial-gradient(circle at 35% 30%, color-mix(in oklab, ${letter.seal_color} 55%, white), ${letter.seal_color} 65%)` }}
+                    className="grid h-20 w-20 place-items-center rounded-full text-3xl shadow-pin"
+                    style={{ background: `radial-gradient(circle at 35% 30%, color-mix(in oklab, ${letter.seal_color} 55%, white), ${letter.seal_color} 65%)`, color: sealText(letter.seal_color) }}
                   >
                     {locked ? <Lock className="h-8 w-8" /> : letter.seal_symbol}
                   </motion.span>

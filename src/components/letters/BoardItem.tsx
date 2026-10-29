@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
-import { fontClass, isLocked, paperKind, type Letter, type Sticker } from "@/lib/letters";
+import { fontClass, isLocked, paperKind, sealText, type Letter, type Sticker } from "@/lib/letters";
 import { paperBg, useMedia } from "./LetterPaper";
 
 export function Pin({ color }: { color: string }) {
@@ -41,7 +41,7 @@ export function BoardItem({ letter, isNew, onOpen }: { letter: Letter; isNew: bo
           <svg viewBox="0 0 100 75" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
             <path d="M0 0 L50 42 L100 0" fill="none" stroke="currentColor" strokeOpacity=".25" strokeWidth="1.5" />
           </svg>
-          <span className="absolute left-1/2 top-[48%] grid h-6 w-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[10px] text-primary-foreground shadow-pin" style={{ background: letter.seal_color }}>{letter.seal_symbol}</span>
+          <span className="absolute left-1/2 top-[48%] grid h-6 w-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[10px] shadow-pin" style={{ background: letter.seal_color, color: sealText(letter.seal_color) }}>{letter.seal_symbol}</span>
           <ItemLabel letter={letter} sticker={sticker} />
         </div>
       )}
