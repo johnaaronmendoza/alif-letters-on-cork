@@ -49,16 +49,45 @@ export function backgroundCss(id: string) {
   return BACKGROUNDS.find((b) => b.id === id)?.css ?? BACKGROUNDS[0].css;
 }
 
-/** Stickers: paper scraps, photo frames (hold a photo) and a few cute ones. */
-export const STICKER_PAGES = [
+/**
+ * Sticker pack: images in /public/stickers/<file>.webp.
+ * aspect = height ÷ width, w = default width in % of the paper.
+ */
+const PACK: [file: number, aspect: number, w: number][] = [
+  [6, 0.965, 18], [7, 1.083, 18], [8, 1.143, 18], [9, 1.104, 18], [10, 1.275, 18], [31, 1.053, 18],
+  [11, 0.762, 32], [12, 0.644, 32], [13, 0.525, 32], [14, 1.02, 32], [15, 0.975, 32], [32, 1.042, 32],
+  [21, 0.994, 18], [22, 0.962, 18], [23, 1.01, 18], [19, 1.074, 18], [20, 1.0, 26], [24, 0.512, 24],
+  [25, 0.315, 36], [26, 0.285, 36], [36, 0.19, 30], [18, 1.014, 18], [30, 0.963, 18], [37, 0.838, 18],
+  [27, 1.193, 18], [29, 1.074, 18], [33, 1.516, 18], [34, 0.892, 18], [35, 1.221, 18], [38, 1.123, 18],
+  [28, 1.053, 22],
+];
+const PACK_SHAPE = new Map(PACK.map(([file, aspect, w]) => [`s${file}`, { aspect, w, file }]));
+const PAGE_SIZE = 6;
+/** Sticker ids grouped into sidebar pages of six (doodles, notes, crafts, tape & bits, edgy, …). */
+export const STICKER_PAGES: string[][] = Array.from({ length: Math.ceil(PACK.length / PAGE_SIZE) }, (_, p) =>
+  PACK.slice(p * PAGE_SIZE, p * PAGE_SIZE + PAGE_SIZE).map(([file]) => `s${file}`),
+);
+export type StickerName = string;
+
+/** Image URL for a sticker from the pack, or null for an original drawn sticker. */
+export function stickerSrc(name: string) {
+  const s = PACK_SHAPE.get(name);
+  return s ? `/stickers/${s.file}.webp` : null;
+}
+
+export function stickerShape(name: string): { aspect: number; w: number; frame?: boolean } {
+  return PACK_SHAPE.get(name) ?? LEGACY_SHAPE[name as LegacyStickerName] ?? { aspect: 1, w: 16 };
+}
+
+/** Original drawn stickers. No longer offered, but still rendered for letters that use them. */
+const LEGACY_STICKER_PAGES = [
   ["note-tape", "note-clip", "ticket", "torn-kraft", "i-love-you", "kraft-hearts"],
   ["popup", "browser", "player", "tv", "film-frame", "film-strip"],
   ["heart", "star", "cherry", "tulip", "bow", "moon"],
 ] as const;
-export type StickerName = (typeof STICKER_PAGES)[number][number];
+export type LegacyStickerName = (typeof LEGACY_STICKER_PAGES)[number][number];
 
-/** Height ÷ width of each sticker, and its default width in % of the paper. */
-export const STICKER_SHAPE: Record<StickerName, { aspect: number; w: number; frame?: boolean }> = {
+const LEGACY_SHAPE: Record<LegacyStickerName, { aspect: number; w: number; frame?: boolean }> = {
   "note-tape": { aspect: 0.92, w: 26 },
   "note-clip": { aspect: 0.8, w: 28 },
   ticket: { aspect: 0.5, w: 30 },

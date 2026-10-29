@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { Link2, Pause, Play, RotateCw } from "lucide-react";
-import { CANVAS_FONTS, parseVideo, type CanvasEl } from "@/lib/canvas";
+import { CANVAS_FONTS, parseVideo, stickerSrc, type CanvasEl, type LegacyStickerName } from "@/lib/canvas";
 import { resolveMedia } from "@/lib/letters";
 import { StickerArt } from "./stickers";
 
@@ -219,9 +219,11 @@ function ImageView({ src }: { src: string }) {
   return url ? <img src={url} alt="" draggable={false} className="h-full w-full object-cover shadow-sm" /> : <div className="h-full w-full animate-pulse bg-ink/10" />;
 }
 
-function StickerView({ name, photo }: { name: Parameters<typeof StickerArt>[0]["name"]; photo?: string | null }) {
+function StickerView({ name, photo }: { name: string; photo?: string | null }) {
   const url = useSrc(photo);
-  return <div className="relative h-full w-full"><StickerArt name={name} photo={url} /></div>;
+  const src = stickerSrc(name);
+  if (src) return <img src={src} alt="" draggable={false} className="h-full w-full select-none object-contain" />;
+  return <div className="relative h-full w-full"><StickerArt name={name as LegacyStickerName} photo={url} /></div>;
 }
 
 function AudioView({ src, name, live }: { src: string; name: string; live: boolean }) {

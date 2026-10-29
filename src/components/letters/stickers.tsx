@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { StickerName } from "@/lib/canvas";
+import type { LegacyStickerName } from "@/lib/canvas";
 
 /** Photo well used inside frame stickers. */
 function Slot({ photo, className = "", style }: { photo?: string | null; className?: string; style?: CSSProperties }) {
@@ -27,7 +27,8 @@ const torn = (w: number, h: number, seed: number) => {
   return `M0,${h} L${pts.join(" L")} L${w},${h} Z`;
 };
 
-export function StickerArt({ name, photo }: { name: StickerName; photo?: string | null }) {
+/** The original drawn stickers, kept so letters that already use them still render. */
+export function StickerArt({ name, photo }: { name: LegacyStickerName; photo?: string | null }) {
   switch (name) {
     case "note-tape":
       return svg("0 0 100 92", <>
@@ -156,6 +157,8 @@ export function StickerArt({ name, photo }: { name: StickerName; photo?: string 
       </>);
     case "moon":
       return svg("0 0 24 24", <path d="M15.5 3a9 9 0 1 0 5.5 15.4A8 8 0 0 1 15.5 3z" fill="#f6e27a" stroke="#c9a93a" strokeWidth=".8" />);
+    default:
+      return null;
   }
 }
 

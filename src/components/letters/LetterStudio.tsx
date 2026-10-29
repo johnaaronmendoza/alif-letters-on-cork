@@ -9,12 +9,11 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { PIN_COLORS, getBrowserId, newBoardMeta, uploadMedia, type Letter } from "@/lib/letters";
 import {
-  BACKGROUNDS, CANVAS_FONTS, STICKER_PAGES, STICKER_SHAPE, TEXT_BGS, TEXT_COLORS, backgroundCss, heightFor, parseVideo,
-  plainText, safeUrl, uid, type CanvasEl, type ElementKind, type StickerName,
+  BACKGROUNDS, CANVAS_FONTS, STICKER_PAGES, TEXT_BGS, TEXT_COLORS, backgroundCss, heightFor, parseVideo,
+  plainText, safeUrl, stickerShape, stickerSrc, uid, type CanvasEl, type ElementKind, type StickerName,
 } from "@/lib/canvas";
 import { ease, fadeOut, spring } from "@/lib/motion";
 import { LetterCanvas } from "./LetterCanvas";
-import { StickerArt } from "./stickers";
 import { Photocard } from "./Photocard";
 
 type Dialog = null | { kind: "link" | "video" | "audio"; editId?: string };
@@ -162,7 +161,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   };
 
   const addSticker = (name: StickerName) => {
-    const s = STICKER_SHAPE[name];
+    const s = stickerShape(name);
     add({ kind: "sticker", name, w: s.w, h: heightFor(s.w, s.aspect), r: Math.round(Math.random() * 8 - 4) });
   };
 
@@ -296,16 +295,13 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   <motion.div key={page} className="grid grid-cols-3 gap-2"
                     initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10, transition: fadeOut }} transition={{ duration: 0.2, ease: ease.out }}>
                     {STICKER_PAGES[page]!.map((name) => (
-                      <button key={name} onClick={() => addSticker(name)} aria-label={`add ${name.replace("-", " ")} sticker`}
+                      <button key={name} onClick={() => addSticker(name)} aria-label={`add sticker ${name.slice(1)}`}
                         className="grid aspect-square place-items-center rounded-lg p-2 transition-transform duration-200 hover:scale-105 hover:bg-black/5 active:scale-95">
-                        <span className="relative block w-full" style={{ aspectRatio: `1 / ${Math.min(STICKER_SHAPE[name].aspect, 1.3)}` }}>
-                          <StickerArt name={name} />
-                        </span>
+                        <img src={stickerSrc(name) ?? ""} alt="" draggable={false} loading="lazy" className="max-h-full max-w-full select-none object-contain" />
                       </button>
                     ))}
                   </motion.div>
                 </AnimatePresence>
-                {page === 1 && <p className="mt-2 text-xs text-ink/50">frames hold a photo — select one and tap the pencil</p>}
               </Section>
 
               <Section title="photocard" action={
@@ -518,7 +514,7 @@ function Toolbar({ el, palette, setPalette, onPatch, onEdit, onFront, onBack, on
     onPatch({ font: CANVAS_FONTS[(i + 1) % CANVAS_FONTS.length]!.id } as Partial<CanvasEl>);
   };
   const editLabel = isText ? "edit text" : el.kind === "sticker" ? "add photo" : el.kind === "image" ? "replace image" : `edit ${el.kind}`;
-  const canEdit = el.kind !== "sticker" || STICKER_SHAPE[el.name].frame;
+  const canEdit = el.kind !== "sticker" || !!stickerShape(el.name).frame;
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center px-3">
