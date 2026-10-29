@@ -74,7 +74,7 @@ function Room() {
     <MotionConfig reducedMotion="user">
     <main className="wall relative min-h-screen overflow-x-hidden pb-28">
       <header className="relative z-10 px-6 pt-6 sm:px-10 sm:pt-8">
-        <h1 className="-rotate-3 font-title text-6xl leading-none text-ink sm:text-7xl">for alif ♡</h1>
+        <h1 className="-rotate-3 font-title font-bold text-6xl leading-none text-ink sm:text-7xl">for alif ♡</h1>
         <p className="ml-2 mt-1 -rotate-1 font-hand text-xl text-ink/70">{letters.length} {letters.length === 1 ? "letter" : "letters"} pinned</p>
       </header>
       <button onClick={() => { setMuted(!muted); localStorage.setItem("alif-muted", muted ? "0" : "1"); }} aria-label={muted ? "unmute" : "mute"} className="absolute right-4 top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-card/80 text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">

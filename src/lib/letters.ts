@@ -16,9 +16,9 @@ export const PAPER_STYLES = [
 ] as const;
 
 export const FONTS = [
+  { id: "poppins", label: "Poppins", cls: "font-clean" },
   { id: "caveat", label: "Caveat", cls: "font-hand" },
   { id: "typewriter", label: "Special Elite", cls: "font-typewriter" },
-  { id: "poppins", label: "Poppins", cls: "font-clean" },
 ] as const;
 /** Fonts that were removed, mapped to their closest replacement for older letters. */
 const RETIRED_FONTS: Record<string, string> = { patrick: "font-hand", inter: "font-clean" };

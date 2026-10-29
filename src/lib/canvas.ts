@@ -21,9 +21,9 @@ export type ElementKind = CanvasEl["kind"];
 export const PAPER_ASPECT = 3 / 4;
 
 export const CANVAS_FONTS = [
+  { id: "poppins", label: "Poppins", cls: "font-clean" },
   { id: "caveat", label: "Caveat", cls: "font-hand" },
   { id: "typewriter", label: "Special Elite", cls: "font-typewriter" },
-  { id: "poppins", label: "Poppins", cls: "font-clean" },
 ] as const;
 export type FontId = (typeof CANVAS_FONTS)[number]["id"];
 
