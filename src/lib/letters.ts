@@ -58,7 +58,7 @@ export function pickBoardSpot(existing: { board_x: number; board_y: number }[]) 
     existing.reduce((m, e) => Math.min(m, Math.hypot(e.board_x - s.x, (e.board_y - s.y) * 0.625)), Infinity);
   const free = slots.filter((s) => minDist(s) > 7);
   const pool = free.length ? free : slots;
-  const slot = pool[Math.floor(Math.random() * pool.length)];
+  const slot = pool[Math.floor(Math.random() * pool.length)] ?? { x: 50, y: 50 };
   const jx = (100 / GRID_COLS) * 0.18, jy = (100 / GRID_ROWS) * 0.15;
   return {
     board_x: clamp(slot.x + (Math.random() * 2 - 1) * jx, 6, 94),
@@ -73,7 +73,7 @@ const urlCache = new Map<string, string>();
 export async function resolveMedia(ref: string | null) {
   if (!ref) return null;
   if (urlCache.has(ref)) return urlCache.get(ref)!;
-  const [bucket, ...rest] = ref.split("/");
+  const [bucket = "photos", ...rest] = ref.split("/");
   const { data } = await supabase.storage.from(bucket).createSignedUrl(rest.join("/"), 60 * 60 * 24);
   if (data?.signedUrl) urlCache.set(ref, data.signedUrl);
   return data?.signedUrl ?? null;

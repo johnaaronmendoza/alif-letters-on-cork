@@ -21,9 +21,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [sig, setSig] = useState<string | null>(null);
-  const [pin, setPin] = useState(PIN_COLORS[0]);
-  const [sealColor, setSealColor] = useState(SEAL_COLORS[0]);
-  const [sealSymbol, setSealSymbol] = useState(SEAL_SYMBOLS[0]);
+  const [pin, setPin] = useState(PIN_COLORS[0]!);
+  const [sealColor, setSealColor] = useState(SEAL_COLORS[0]!);
+  const [sealSymbol, setSealSymbol] = useState(SEAL_SYMBOLS[0]!);
   const [unlock, setUnlock] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (p: Partial<PaperData>) => setD((x) => ({ ...x, ...p }));
@@ -38,7 +38,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
     set({ stickers: [...d.stickers, { type, x: 15 + Math.random() * 65, y: 15 + Math.random() * 60, rotation: Math.round(Math.random() * 30 - 15), scale: 1 + Math.random() * 0.4 }] });
 
   const submit = async () => {
-    if (!d.body.trim()) { setStep("write"); return toast.error("write alif something first ♡"); }
+    if (!d.body.trim()) { setStep("write"); toast.error("write alif something first ♡"); return; }
     setBusy(true);
     try {
       const photo_url = photo ? await uploadMedia("photos", photo, photo.name.split(".").pop() || "jpg") : null;
@@ -76,7 +76,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
         <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[1.1fr_1fr] lg:overflow-hidden">
           <div className="bg-cork-soft p-4 sm:p-8 lg:overflow-y-auto">
             <div className="mx-auto max-w-md">
-              <LetterPaper data={d} photoPreview={photoPreview} signaturePreview={sig} onStickersChange={step === "decorate" ? (s) => set({ stickers: s }) : undefined} />
+              <LetterPaper data={d} photoPreview={photoPreview} signaturePreview={sig} {...(step === "decorate" ? { onStickersChange: (s: Sticker[]) => set({ stickers: s }) } : {})} />
               {step === "decorate" && <p className="mt-2 text-center font-hand text-lg text-cream">drag stickers around · double-click to remove</p>}
             </div>
           </div>
@@ -126,9 +126,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   <Field label="photo (optional, shown as a taped polaroid)">
                     <input type="file" accept="image/*" onChange={(e) => {
                       const f = e.target.files?.[0];
-                      if (!f) return;
-                      if (f.size > 5 * 1024 * 1024) return toast.error("photo must be under 5MB");
-                      setPhoto(f); setPhotoPreview(URL.createObjectURL(f));
+                      if (!f) return undefined;
+                      if (f.size > 5 * 1024 * 1024) { toast.error("photo must be under 5MB"); return undefined; }
+                      setPhoto(f); setPhotoPreview(URL.createObjectURL(f)); return undefined;
                     }} className="text-sm" />
                     {photo && <button onClick={() => { setPhoto(null); setPhotoPreview(null); }} className="ml-2 text-xs underline">remove</button>}
                   </Field>
@@ -157,9 +157,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
               )}
             </div>
             <footer className="flex items-center justify-between gap-3 border-t border-ink/10 p-4">
-              <button disabled={step === "style"} onClick={() => setStep(STEPS[STEPS.indexOf(step) - 1])} className="font-hand text-xl text-ink/70 disabled:opacity-30">← back</button>
+              <button disabled={step === "style"} onClick={() => setStep(STEPS[STEPS.indexOf(step) - 1]!)} className="font-hand text-xl text-ink/70 disabled:opacity-30">← back</button>
               {step !== "seal" ? (
-                <button onClick={() => setStep(STEPS[STEPS.indexOf(step) + 1])} className="rotate-1 bg-butter px-5 py-2 font-hand text-2xl text-ink shadow-item">next →</button>
+                <button onClick={() => setStep(STEPS[STEPS.indexOf(step) + 1]!)} className="rotate-1 bg-butter px-5 py-2 font-hand text-2xl text-ink shadow-item">next →</button>
               ) : (
                 <button disabled={busy} onClick={submit} className="-rotate-1 bg-cherry px-5 py-2 font-hand text-2xl text-primary-foreground shadow-item disabled:opacity-60">{busy ? "pinning…" : "📌 pin it to the board"}</button>
               )}
@@ -191,17 +191,17 @@ function SignaturePad({ onChange, ink }: { onChange: (url: string | null) => voi
   const dirty = useRef(false);
   const pos = (e: React.PointerEvent) => {
     const r = ref.current!.getBoundingClientRect();
-    return [((e.clientX - r.left) / r.width) * ref.current!.width, ((e.clientY - r.top) / r.height) * ref.current!.height];
+    return [(((e.clientX - r.left) / r.width) * ref.current!.width), ((e.clientY - r.top) / r.height) * ref.current!.height];
   };
   return (
     <div>
       <canvas
         ref={ref} width={600} height={180}
         className="w-full touch-none rounded-md border border-dashed border-ink/30 bg-card"
-        onPointerDown={(e) => { drawing.current = true; const c = ref.current!.getContext("2d")!; const [x, y] = pos(e); c.beginPath(); c.moveTo(x, y); }}
+        onPointerDown={(e) => { drawing.current = true; const c = ref.current!.getContext("2d")!; const [x = 0, y = 0] = pos(e); c.beginPath(); c.moveTo(x, y); }}
         onPointerMove={(e) => {
           if (!drawing.current) return;
-          const c = ref.current!.getContext("2d")!; const [x, y] = pos(e);
+          const c = ref.current!.getContext("2d")!; const [x = 0, y = 0] = pos(e);
           c.lineWidth = 4; c.lineCap = "round"; c.strokeStyle = ink; c.lineTo(x, y); c.stroke(); dirty.current = true;
         }}
         onPointerUp={() => { drawing.current = false; if (dirty.current) onChange(ref.current!.toDataURL("image/png")); }}
