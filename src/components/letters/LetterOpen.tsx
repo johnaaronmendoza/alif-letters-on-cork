@@ -76,9 +76,9 @@ export function LetterOpen({ letter, origin, nav, onRead, onClose }: {
       ref={dialog} tabIndex={-1}
     >
       {/* soft, warm backdrop tinted by the current envelope */}
-      <div className="fixed inset-0 bg-[#1c140e]/55 backdrop-blur-md" />
-      <m.div className="pointer-events-none fixed inset-0"
-        animate={{ background: `radial-gradient(ellipse at 50% 45%, ${env.paper}33 0%, transparent 60%)` }} transition={{ duration: 0.4 }} />
+      {/* a solid tint, not a backdrop blur: re-blurring the whole board every frame made opening laggy */}
+      <div className="fixed inset-0 bg-[#1c140e]/75" />
+      <div className="pointer-events-none fixed inset-0" style={{ background: `radial-gradient(ellipse at 50% 45%, ${env.paper}2e 0%, transparent 60%)` }} />
 
       <button
         onClick={(e) => {
@@ -87,11 +87,11 @@ export function LetterOpen({ letter, origin, nav, onRead, onClose }: {
           navigator.clipboard?.writeText(url).then(() => toast("link copied — anyone with it can open this letter"), () => toast(url));
         }}
         aria-label="copy a link to this letter" title="copy link"
-        className="fixed right-[4.25rem] top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-white/90 text-ink shadow-item backdrop-blur transition-transform duration-200 hover:scale-105 active:scale-95">
+        className="fixed right-[4.25rem] top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-white/95 text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
         <Link2 className="h-5 w-5" />
       </button>
       <button onClick={onClose} aria-label="close"
-        className="fixed right-4 top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-white/90 text-ink shadow-item backdrop-blur transition-transform duration-200 hover:scale-105 active:scale-95">
+        className="fixed right-4 top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-white/95 text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
         <X className="h-5 w-5" />
       </button>
 
@@ -107,7 +107,7 @@ export function LetterOpen({ letter, origin, nav, onRead, onClose }: {
 
       {nav && nav.total > 1 && (
         <div className="pointer-events-none fixed inset-x-0 bottom-5 z-20 flex justify-center px-4">
-          <div onClick={(e) => e.stopPropagation()} className="pointer-events-auto flex items-center gap-1 rounded-full bg-white/90 p-1.5 shadow-lg backdrop-blur">
+          <div onClick={(e) => e.stopPropagation()} className="pointer-events-auto flex items-center gap-1 rounded-full bg-white/95 p-1.5 shadow-lg">
             <button type="button" aria-label="previous letter" disabled={!nav.onPrev} onClick={nav.onPrev}
               className="grid h-11 w-11 place-items-center rounded-full text-ink transition-colors hover:bg-black/5 disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent">
               <ChevronLeft className="h-5 w-5" />

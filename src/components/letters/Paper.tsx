@@ -131,7 +131,7 @@ export function PaperSheet({ paper }: { paper: PaperId }) {
           style={{ backgroundImage: "linear-gradient(to bottom, transparent calc(100% - 1px), rgb(90 130 190 / .14) calc(100% - 1px))", backgroundSize: "100% 4.6cqw" }} />
       )}
       {/* grain over everything, slightly stronger on kraft and vintage */}
-      <div className="absolute inset-0 mix-blend-multiply" style={{ backgroundImage: GRAIN, opacity: paper === "kraft" || paper === "vintage" ? 1 : 0.7 }} />
+      <div className="absolute inset-0" style={{ backgroundImage: GRAIN, opacity: paper === "kraft" || paper === "vintage" ? 1 : 0.7 }} />
     </div>
   );
 }

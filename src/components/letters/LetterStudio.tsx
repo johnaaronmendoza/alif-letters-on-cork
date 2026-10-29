@@ -318,7 +318,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
 
   return (
     <m.div
-      className="fixed inset-0 z-50 flex bg-ink/50 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-50 flex bg-ink/65 sm:p-4"
       initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.25, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }}
       role="dialog" aria-modal="true" aria-label="write a letter"
       ref={focusRoot} tabIndex={-1}

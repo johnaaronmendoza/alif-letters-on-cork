@@ -69,7 +69,10 @@ export function BoardItem({
         className="relative block w-full cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cork"
         aria-label={`${locked ? "locked " : ""}letter from ${letter.from_name}${photocard ? ", with a photocard" : ""}${read ? ", opened" : ""}`}
       >
-          <div className="relative w-full" style={{ aspectRatio: "600 / 457", filter: "drop-shadow(0 3px 5px rgb(40 25 10 / .25))" }}>
+          <div className="relative w-full" style={{ aspectRatio: "600 / 457" }}>
+            {/* shadow under the envelope body: a plain box-shadow, far cheaper than a filter on every envelope */}
+            <span aria-hidden className="absolute block rounded-[2px]"
+              style={{ left: "1%", right: "2%", top: "13%", bottom: "2%", boxShadow: "0 3px 6px rgb(40 25 10 / .28), 0 1px 2px rgb(40 25 10 / .2)" }} />
             {/* a corner of the photocard peeking out from behind the envelope */}
             {photocard && (
               <span className="absolute -top-[16%] right-[7%] block w-[30%] rotate-[9deg] bg-[#fbfaf7] p-[3%] shadow-sm" aria-hidden>

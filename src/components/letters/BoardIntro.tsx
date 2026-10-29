@@ -133,10 +133,10 @@ export function BoardIntro({ onStamp, onImpact, onDone }: { onStamp: () => void;
                 <Dust />
                 {/* a quick flash as the stamp hits */}
                 <m.div
-                  className="absolute inset-0 bg-white mix-blend-soft-light"
+                  className="absolute inset-0 bg-[#fff8ec]"
                   style={{ zIndex: 60 }}
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 0.55, 0] }}
+                  animate={{ opacity: [0, 0.3, 0] }}
                   transition={{ delay: LAND, duration: 0.32, times: [0, 0.2, 1] }}
                 />
               </m.div>
@@ -151,7 +151,7 @@ export function BoardIntro({ onStamp, onImpact, onDone }: { onStamp: () => void;
             key="skip"
             type="button"
             onClick={finish}
-            className="fixed bottom-6 left-1/2 z-50 min-h-11 -translate-x-1/2 rounded-full bg-[#1c140e]/70 px-5 font-clean text-sm tracking-wide text-white shadow-lg backdrop-blur transition-colors hover:bg-[#1c140e]/85"
+            className="fixed bottom-6 left-1/2 z-50 min-h-11 -translate-x-1/2 rounded-full bg-[#1c140e]/80 px-5 font-clean text-sm tracking-wide text-white shadow-lg transition-colors hover:bg-[#1c140e]/85"
             initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.6 } }} exit={{ opacity: 0, transition: { duration: 0.15 } }}
           >
             skip intro ›

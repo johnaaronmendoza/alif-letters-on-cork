@@ -397,7 +397,7 @@ function Room() {
 /** Shown for the moment the opener or the editor takes to load the first time. */
 function Opening() {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[#1c140e]/40 backdrop-blur-sm" role="status" aria-live="polite">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#1c140e]/55" role="status" aria-live="polite">
       <span className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-2.5 font-clean text-sm text-ink shadow-lg">
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink/20 border-t-ink" aria-hidden />
         opening…

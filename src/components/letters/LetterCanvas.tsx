@@ -60,11 +60,27 @@ export function LetterCanvas({ elements, paper: paperType = "lined", mode, selec
     onGestureStart?.();
   };
 
+  // pointer moves can fire 120+ times a second; re-render the letter at most once per frame
+  const pending = useRef<{ x: number; y: number } | null>(null);
+  const frame = useRef(0);
   const move = (e: RPointerEvent) => {
     const g = gesture.current;
-    if (!g || !paper.current || !onChange) return;
-    const rect = paper.current.getBoundingClientRect();
+    if (!g || !onChange) return;
     if (Math.hypot(e.clientX - g.px, e.clientY - g.py) > 5) g.moved = true;
+    pending.current = { x: e.clientX, y: e.clientY };
+    if (!frame.current) frame.current = requestAnimationFrame(flush);
+  };
+  const flush = () => {
+    frame.current = 0;
+    const pt = pending.current;
+    pending.current = null;
+    if (pt) apply(pt.x, pt.y);
+  };
+  const apply = (clientX: number, clientY: number) => {
+    const g = gesture.current;
+    if (!g || !paper.current || !onChange) return;
+    const e = { clientX, clientY };
+    const rect = paper.current.getBoundingClientRect();
     const s = g.start;
     let next: CanvasEl = s;
     if (g.type === "move") {
@@ -92,6 +108,8 @@ export function LetterCanvas({ elements, paper: paperType = "lined", mode, selec
   };
 
   const end = () => {
+    // land exactly where the pointer stopped
+    if (frame.current) { cancelAnimationFrame(frame.current); flush(); }
     const g = gesture.current;
     if (!g) return;
     gesture.current = null;
