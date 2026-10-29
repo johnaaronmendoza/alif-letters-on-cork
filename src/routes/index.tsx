@@ -80,6 +80,10 @@ function Room() {
     if (!mutedRef.current) playStamp();
   };
   const introDone = () => setIntro(false);
+  // a small nudge when a heavy piece lands during the intro
+  const nudge = () => {
+    if (board.current) void animateBoard(board.current, { x: [0, -2, 1.5, 0], y: [0, 2, -1, 0] }, { duration: 0.22, ease: "easeOut" });
+  };
   useEffect(() => {
     if (intro) return;
     const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
@@ -159,7 +163,7 @@ function Room() {
                   className="pointer-events-none absolute left-0 top-0 block h-auto w-full select-none"
                   style={extended ? { maskImage: "linear-gradient(to bottom, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 95%, transparent)" } : undefined}
                 />
-                {intro && <BoardIntro onStamp={stamp} onDone={introDone} />}
+                {intro && <BoardIntro onStamp={stamp} onImpact={nudge} onDone={introDone} />}
                 {!intro && letters.length === 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: -10, rotate: -6 }} animate={{ opacity: 1, y: 0, rotate: -4 }} transition={{ delay: 0.6, ...spring.soft }}

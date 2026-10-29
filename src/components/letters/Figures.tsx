@@ -21,9 +21,10 @@ export function BoardFigures({ muted }: { muted: boolean }) {
           <motion.div
             className="relative"
             style={{ rotate: f.rotation, originX: 0.5, originY: 1 }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: ease.out, delay: 0.2 + i * 0.06 }}
+            // finale: the corner figures pop in one after another
+            initial={{ opacity: 0, scale: 0.35, y: 14 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 420, damping: 15, delay: 0.15 + i * 0.12, opacity: { duration: 0.12, delay: 0.15 + i * 0.12 } }}
           >
             {f.toy === "money-gun" && <MoneyGun f={f} muted={muted} />}
             {f.toy === "lighter" && <Lighter f={f} muted={muted} />}

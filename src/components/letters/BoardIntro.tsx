@@ -1,30 +1,46 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { INTRO_PIECES } from "@/lib/intro";
+import { AnimatePresence, motion, useAnimate } from "framer-motion";
+import { INTRO_PIECES, type IntroPiece } from "@/lib/intro";
 import { ART_ASPECT, jitter } from "@/lib/letters";
 
 /**
- * Plays over the collage on first load: bare cork, then every piece slaps on,
- * then the title stamps down with a board shake. Calls onDone when finished or
- * skipped; the real collage underneath is pixel-identical to the final frame.
+ * Plays over the collage on first load. The camera settles on bare cork, the pieces
+ * land with a rhythm that speeds up into a flurry, a beat of silence, then the title
+ * stamps down (shake, flash, dust). Calls onDone when finished or skipped; the real
+ * collage underneath is pixel-identical to the final frame.
  */
-const STEP = 0.13;          // seconds between pieces
-const FIRST = 0.3;          // first piece lands after this
-const TITLE_GAP = 0.25;     // pause before the title
-const HOLD = 0.55;          // hold the finished collage before handing over
+const FIRST = 0.45;         // first piece lands after the camera settles
+const SPAN = 1.75;          // time over which the other pieces land
+const ACCEL = 0.72;         // <1: gaps shrink as it goes (slow start → flurry)
+const TITLE_GAP = 0.42;     // the beat before the title
+const STAMP = 0.2;          // title travel time
+const HOLD = 0.6;           // hold the finished collage before handing over
 const LOAD_TIMEOUT = 4000;  // give up and skip if the first frame is this slow
 
 const pieces = INTRO_PIECES.filter((p) => p.name !== "title" && p.name !== "tracks");
 const title = INTRO_PIECES.find((p) => p.name === "title");
 const tracks = INTRO_PIECES.find((p) => p.name === "tracks");
-/** The tyre tracks skid in at the same moment the Arsenal badge lands. */
-const TRACKS_AT = FIRST + Math.max(0, pieces.findIndex((p) => p.name === "arsenal")) * STEP;
 const zOf = (name: string) => INTRO_PIECES.findIndex((p) => p.name === name) + 1;
 const src = (name: string) => `/board/intro/${name}.webp`;
 
-export function BoardIntro({ onStamp, onDone }: { onStamp: () => void; onDone: () => void }) {
+/** When each piece lands: an accelerating rhythm instead of a metronome. */
+const delayOf = (i: number) => FIRST + SPAN * Math.pow(i / Math.max(1, pieces.length - 1), ACCEL);
+const LAST = delayOf(pieces.length - 1);
+const TITLE_AT = LAST + TITLE_GAP;
+const LAND = TITLE_AT + STAMP;
+const TRACKS_AT = delayOf(Math.max(0, pieces.findIndex((p) => p.name === "arsenal")));
+
+/** How each kind of piece arrives. */
+type Move = "toss" | "slap" | "swing";
+const MOVES: Record<string, Move> = {
+  "strip-left": "toss", "strip-right": "toss", a7x: "toss", "polaroid-r": "toss", "polaroid-l": "toss", "polaroid-tr": "toss",
+  keychain: "swing",
+};
+
+export function BoardIntro({ onStamp, onImpact, onDone }: { onStamp: () => void; onImpact: () => void; onDone: () => void }) {
   const [ready, setReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [camera, animateCamera] = useAnimate();
   const finished = useRef(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -56,13 +72,17 @@ export function BoardIntro({ onStamp, onDone }: { onStamp: () => void; onDone: (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // timeline: title lands, shake + stamp, hold, hand over
+  // timeline: heavy pieces nudge the board as they land; the title stamps; hand over
   useEffect(() => {
     if (!ready) return;
-    const titleAt = FIRST + pieces.length * STEP + TITLE_GAP;
-    const land = titleAt + 0.22;
-    timers.current.push(setTimeout(onStamp, land * 1000));
-    timers.current.push(setTimeout(finish, (land + HOLD) * 1000));
+    const at = (s: number, fn: () => void) => timers.current.push(setTimeout(fn, s * 1000));
+    pieces.forEach((p, i) => { if (MOVES[p.name] === "toss") at(delayOf(i) + 0.3, onImpact); });
+    at(LAND, () => {
+      onStamp();
+      // camera punch on impact
+      if (camera.current) void animateCamera(camera.current, { scale: [1, 1.03, 1] }, { duration: 0.42, ease: "easeOut" });
+    });
+    at(LAND + HOLD, finish);
     return () => timers.current.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
@@ -73,8 +93,6 @@ export function BoardIntro({ onStamp, onDone }: { onStamp: () => void; onDone: (
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, []);
-
-  const titleAt = FIRST + pieces.length * STEP + TITLE_GAP;
 
   return (
     <>
@@ -88,7 +106,14 @@ export function BoardIntro({ onStamp, onDone }: { onStamp: () => void; onDone: (
             aria-hidden
           >
             {ready && (
-              <>
+              // the "camera": settles in on the bare board, punches in when the title lands
+              <motion.div
+                ref={camera}
+                className="absolute inset-0"
+                initial={{ scale: 1.07 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+              >
                 <img src={src("empty")} alt="" className="absolute inset-0 h-full w-full" draggable={false} />
                 {tracks && (
                   <motion.img
@@ -102,20 +127,19 @@ export function BoardIntro({ onStamp, onDone }: { onStamp: () => void; onDone: (
                   />
                 )}
                 {pieces.map((p, i) => (
-                  <Piece key={p.name} name={p.name} box={p} delay={FIRST + i * STEP} />
+                  <Piece key={p.name} piece={p} delay={delayOf(i)} move={MOVES[p.name] ?? "slap"} />
                 ))}
-                {title && (
-                  <motion.img
-                    src={src("title")} alt="" draggable={false}
-                    className="absolute select-none"
-                    style={{ left: `${title.x}%`, top: `${title.y}%`, width: `${title.w}%`, zIndex: zOf("title") }}
-                    initial={{ opacity: 0, scale: 2.6, rotate: -8 }}
-                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                    // accelerates into the board, like a rubber stamp
-                    transition={{ delay: titleAt, duration: 0.22, ease: [0.55, 0, 0.85, 0.25], opacity: { delay: titleAt, duration: 0.06 } }}
-                  />
-                )}
-              </>
+                {title && <Title piece={title} />}
+                <Dust />
+                {/* a quick flash as the stamp hits */}
+                <motion.div
+                  className="absolute inset-0 bg-white mix-blend-soft-light"
+                  style={{ zIndex: 60 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 0.55, 0] }}
+                  transition={{ delay: LAND, duration: 0.32, times: [0, 0.2, 1] }}
+                />
+              </motion.div>
             )}
           </motion.div>
         )}
@@ -138,18 +162,84 @@ export function BoardIntro({ onStamp, onDone }: { onStamp: () => void; onDone: (
   );
 }
 
-function Piece({ name, box, delay }: { name: string; box: { x: number; y: number; w: number }; delay: number }) {
-  const tilt = jitter(name, 3) * 12;
+/** One collage piece. Only transform + opacity animate; its shadow is baked into the image. */
+function Piece({ piece: p, delay, move }: { piece: IntroPiece; delay: number; move: Move }) {
+  const fromLeft = p.x + p.w / 2 < 50;
+  const spin = jitter(p.name, 3);
+  const style = { left: `${p.x}%`, top: `${p.y}%`, width: `${p.w}%`, zIndex: zOf(p.name) };
+
+  if (move === "toss") {
+    // photos and the poster are tossed in from the nearest side, spinning, and settle with a small bounce
+    return (
+      <motion.img
+        src={src(p.name)} alt="" draggable={false} className="absolute select-none" style={style}
+        initial={{ opacity: 0, x: fromLeft ? "-90%" : "90%", y: "-35%", rotate: (fromLeft ? -1 : 1) * (22 + spin * 10), scale: 1.12 }}
+        animate={{ opacity: 1, x: "0%", y: "0%", rotate: 0, scale: 1 }}
+        transition={{ delay, type: "spring", stiffness: 240, damping: 19, mass: 0.9, opacity: { delay, duration: 0.1 } }}
+      />
+    );
+  }
+  if (move === "swing") {
+    // the keychain swings in from its ring like a pendulum
+    return (
+      <motion.img
+        src={src(p.name)} alt="" draggable={false} className="absolute select-none" style={{ ...style, originX: 0.72, originY: 0.06 }}
+        initial={{ opacity: 0, rotate: -55 }}
+        animate={{ opacity: 1, rotate: [-55, 22, -11, 5, -2, 0] }}
+        transition={{ delay, duration: 1.1, times: [0, 0.28, 0.5, 0.7, 0.86, 1], ease: "easeOut", opacity: { delay, duration: 0.08 } }}
+      />
+    );
+  }
+  // stickers are slapped flat: drop in big, squash on contact, settle
   return (
     <motion.img
-      src={src(name)} alt="" draggable={false}
-      className="absolute select-none"
-      style={{ left: `${box.x}%`, top: `${box.y}%`, width: `${box.w}%`, zIndex: zOf(name) }}
-      // lifted off the board (bigger, tilted, deep shadow) → slapped flat
-      // only transform + opacity animate (cheap on the GPU); no animated shadows
-      initial={{ opacity: 0, scale: 1.45, rotate: tilt, y: "-6%" }}
-      animate={{ opacity: 1, scale: 1, rotate: 0, y: "0%" }}
-      transition={{ delay, type: "spring", stiffness: 520, damping: 26, mass: 0.8, opacity: { delay, duration: 0.08 } }}
+      src={src(p.name)} alt="" draggable={false} className="absolute select-none" style={style}
+      initial={{ opacity: 0, scale: 1.7, rotate: spin * 14 }}
+      animate={{ opacity: 1, scale: [1.7, 0.93, 1.03, 1], rotate: [spin * 14, spin * -2, 0, 0] }}
+      transition={{ delay, duration: 0.42, times: [0, 0.5, 0.78, 1], ease: "easeOut", opacity: { delay, duration: 0.07 } }}
     />
+  );
+}
+
+/** The title slams down like a rubber stamp, squashes on impact, and settles. */
+function Title({ piece: t }: { piece: IntroPiece }) {
+  return (
+    <motion.img
+      src={src("title")} alt="" draggable={false}
+      className="absolute select-none"
+      style={{ left: `${t.x}%`, top: `${t.y}%`, width: `${t.w}%`, zIndex: zOf("title") }}
+      initial={{ opacity: 0, scale: 2.8, rotate: -9 }}
+      animate={{ opacity: 1, scale: [2.8, 1, 0.95, 1.015, 1], rotate: [-9, 0, 0, 0, 0] }}
+      transition={{ delay: TITLE_AT, duration: STAMP + 0.3, times: [0, 0.4, 0.58, 0.8, 1], ease: [0.55, 0, 0.85, 0.25], opacity: { delay: TITLE_AT, duration: 0.06 } }}
+    />
+  );
+}
+
+/** Specks of dust and paper fibre kicked up around the title when it lands. */
+function Dust() {
+  if (!title) return null;
+  const cx = title.x + title.w / 2, cy = title.y + title.h / 2;
+  return (
+    <>
+      {Array.from({ length: 18 }, (_, i) => {
+        const a = (i / 18) * Math.PI * 2 + jitter(`dust${i}`, 1) * 0.3;
+        const dist = 15 + (jitter(`dust${i}`, 2) + 1) * 7;   // % of the board width
+        const size = 0.35 + (jitter(`dust${i}`, 3) + 1) * 0.3;
+        return (
+          <motion.span
+            key={i}
+            className="absolute block rounded-full"
+            style={{
+              left: `${cx}%`, top: `${cy}%`, width: `${size}%`, aspectRatio: "1", zIndex: 59,
+              background: i % 3 ? "rgb(92 58 32 / .7)" : "rgb(255 248 236 / .85)",
+            }}
+            initial={{ opacity: 0, x: 0, y: 0 }}
+            // % translate is relative to the speck itself, so scale board distances by its size
+            animate={{ opacity: [0, 1, 0], x: `${(Math.cos(a) * dist / size) * 100}%`, y: `${(Math.sin(a) * dist * 0.55 / size) * 100}%` }}
+            transition={{ delay: LAND, duration: 0.65, times: [0, 0.15, 1], ease: "easeOut" }}
+          />
+        );
+      })}
+    </>
   );
 }
