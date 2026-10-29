@@ -5,15 +5,10 @@ import { isLocked, jitter, type BoardSpot, type Letter } from "@/lib/letters";
 import { isCanvasLetter } from "@/lib/canvas";
 import { useMedia } from "./LetterPaper";
 
-/** Pastel envelope papers, matching the mockup. */
-const ENVELOPES = [
-  { paper: "#c9d4c5", shade: "#aebba9" }, // sage
-  { paper: "#f4f2ed", shade: "#d9d5cc" }, // white
-  { paper: "#f0dba9", shade: "#d9bf84" }, // butter
-  { paper: "#eeb7b0", shade: "#d79a92" }, // pink
-  { paper: "#bcd0e6", shade: "#9cb5d1" }, // blue
-];
+/** Pinned envelope photos (each already has its push pin). */
+const ENVELOPES = ["sage", "butter", "white", "pink", "blue"];
 const PINS = ["#2bb3a3", "#f2c230", "#d9483b", "#a77bd6", "#d9483b"];
+const pick = <T,>(list: T[], id: string, salt: number) => list[Math.floor((jitter(id, salt) + 1) * 2.5) % list.length]!;
 
 /** A glossy push pin seen from slightly above. */
 export function Pin({ color }: { color: string }) {
@@ -46,8 +41,8 @@ export function BoardItem({
   const photocard = isCanvasLetter(letter.stickers) && !!letter.photo_url;
   const photo = useMedia(photocard ? letter.photo_url : null);
   const locked = isLocked(letter);
-  const env = ENVELOPES[Math.floor((jitter(letter.id, 7) + 1) * 2.5) % ENVELOPES.length]!;
-  const pin = PINS[Math.floor((jitter(letter.id, 9) + 1) * 2.5) % PINS.length]!;
+  const env = pick(ENVELOPES, letter.id, 7);
+  const pin = pick(PINS, letter.id, 9);
   const r = spot.r;
 
   return (
@@ -68,7 +63,7 @@ export function BoardItem({
         className="relative block w-full cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cork"
         aria-label={`${locked ? "locked " : ""}letter from ${letter.from_name}`}
       >
-        <Pin color={pin} />
+        {photocard && <Pin color={pin} />}
 
         {photocard ? (
           <div className="w-full bg-[#f6f4ef] p-[6%] pb-[4%] shadow-item">
@@ -78,25 +73,9 @@ export function BoardItem({
             <div className="truncate pt-[6%] text-center font-clean text-[clamp(9px,1vw,13px)] font-semibold text-ink">{letter.from_name}</div>
           </div>
         ) : (
-          <div className="relative aspect-[10/7] w-full" style={{ filter: "drop-shadow(0 2px 2px rgb(40 25 10 / .3)) drop-shadow(0 6px 10px rgb(40 25 10 / .25))" }}>
-            <svg viewBox="0 0 100 70" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
-              <defs>
-                <linearGradient id={`g-${letter.id}`} x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="#fff" stopOpacity=".35" />
-                  <stop offset=".55" stopColor="#fff" stopOpacity="0" />
-                  <stop offset="1" stopColor="#000" stopOpacity=".06" />
-                </linearGradient>
-              </defs>
-              <rect width="100" height="70" rx="1.5" fill={env.paper} />
-              {/* side and bottom folds */}
-              <path d="M0 70 L50 38 L100 70 Z" fill={env.shade} opacity=".35" />
-              <path d="M0 0 L44 40 M100 0 L56 40" stroke={env.shade} strokeWidth=".8" opacity=".9" />
-              {/* top flap, folded down */}
-              <path d="M0 0 L50 42 L100 0 Z" fill={env.paper} />
-              <path d="M0 0 L50 42 L100 0" fill="none" stroke={env.shade} strokeWidth="1" />
-              <rect width="100" height="70" rx="1.5" fill={`url(#g-${letter.id})`} />
-            </svg>
-            <span className="absolute inset-x-[8%] top-[46%] truncate text-center font-clean text-[clamp(9px,1.05vw,15px)] font-semibold leading-tight text-ink">
+          <div className="relative w-full" style={{ aspectRatio: "600 / 457", filter: "drop-shadow(0 3px 5px rgb(40 25 10 / .25))" }}>
+            <img src={`/board/envelopes/${env}.webp`} alt="" width={600} height={457} draggable={false} loading="lazy" className="block h-full w-full select-none" />
+            <span className="absolute inset-x-[22%] top-[56%] -translate-y-1/2 truncate text-center font-clean text-[clamp(9px,1.05vw,15px)] font-semibold leading-tight text-ink">
               {letter.from_name}
             </span>
           </div>
