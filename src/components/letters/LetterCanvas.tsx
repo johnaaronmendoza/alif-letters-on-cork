@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import { Link2, Pause, Play, RotateCw } from "lucide-react";
 import { CANVAS_FONTS, parseVideo, stickerSrc, type CanvasEl, type LegacyStickerName } from "@/lib/canvas";
 import { resolveMedia } from "@/lib/letters";
@@ -45,15 +45,17 @@ type Props = {
 export function LetterCanvas({ elements, mode, selectedId, editingId, onSelect, onEdit, onChange, onGestureStart, onGestureEnd }: Props) {
   const paper = useRef<HTMLDivElement>(null);
   const gesture = useRef<null | {
-    id: string; type: "move" | "resize" | "rotate"; px: number; py: number;
+    id: string; type: Gesture; px: number; py: number;
     cx: number; cy: number; start: CanvasEl; dist: number; angle: number;
   }>(null);
   const editable = mode === "edit";
   const sorted = [...elements].sort((a, b) => a.z - b.z);
 
-  const begin = (e: RPointerEvent, el: CanvasEl, type: "move" | "resize" | "rotate") => {
-    if (!editable || editingId === el.id) return;
+  const begin = (e: RPointerEvent, el: CanvasEl, type: Gesture) => {
+    // while typing, the box can't be dragged around, but its handles still work
+    if (!editable || (editingId === el.id && type === "move")) return;
     e.stopPropagation();
+    if (type !== "move") e.preventDefault(); // keep focus (and the caret) in the text while using a handle
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const box = (e.currentTarget.closest("[data-el]") as HTMLElement).getBoundingClientRect();
     const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
@@ -75,6 +77,12 @@ export function LetterCanvas({ elements, mode, selectedId, editingId, onSelect, 
     if (g.type === "move") {
       const dx = ((e.clientX - g.px) / rect.width) * 100, dy = ((e.clientY - g.py) / rect.height) * 100;
       next = { ...s, x: clamp(s.x + dx, -s.w + 6, 94), y: clamp(s.y + dy, -s.h + 4, 96) };
+    } else if (g.type === "width-r" || g.type === "width-l") {
+      // text box width only: the text re-wraps, the font size stays the same
+      const rad = (s.r * Math.PI) / 180;
+      const along = (((e.clientX - g.px) * Math.cos(rad) + (e.clientY - g.py) * Math.sin(rad)) / rect.width) * 100;
+      const w = clamp(g.type === "width-r" ? s.w + along : s.w - along, 8, 140);
+      next = { ...s, w, x: g.type === "width-r" ? s.x : s.x + (s.w - w) };
     } else if (g.type === "resize") {
       const k = clamp(Math.hypot(e.clientX - g.cx, e.clientY - g.cy) / g.dist, 0.2, 6);
       const w = clamp(s.w * k, 6, 140), h = s.h * (w / s.w);
@@ -144,6 +152,16 @@ export function LetterCanvas({ elements, mode, selectedId, editingId, onSelect, 
                   >
                     <RotateCw className="h-4 w-4" />
                   </button>
+                  {el.kind === "text" && (["width-l", "width-r"] as const).map((side) => (
+                    <button
+                      key={side}
+                      aria-label={side === "width-r" ? "make wider or narrower from the right" : "make wider or narrower from the left"}
+                      onPointerDown={(e) => begin(e, el, side)}
+                      className={`absolute top-1/2 grid h-10 w-6 -translate-y-1/2 cursor-ew-resize place-items-center ${side === "width-r" ? "-right-4" : "-left-4"}`}
+                    >
+                      <span className="block h-6 w-2.5 rounded-full border-2 border-[#3b82f6] bg-white shadow" />
+                    </button>
+                  ))}
                   <button
                     aria-label="resize"
                     onPointerDown={(e) => begin(e, el, "resize")}
@@ -160,6 +178,7 @@ export function LetterCanvas({ elements, mode, selectedId, editingId, onSelect, 
 }
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+type Gesture = "move" | "resize" | "rotate" | "width-l" | "width-r";
 
 export function fontCls(id: string) {
   return CANVAS_FONTS.find((f) => f.id === id)?.cls ?? "font-hand";
@@ -176,16 +195,13 @@ function ElementView({ el, mode, editing, onText, onDoneEditing }: {
         background: el.bg ?? "transparent", padding: el.bg ? "0.25em 0.5em" : "0.1em 0.15em", borderRadius: el.bg ? "0.3em" : 0,
       };
       return editing ? (
-        <textarea
-          autoFocus
+        <AutoTextarea
           value={el.text}
           maxLength={1000}
           placeholder="write something…"
-          onChange={(e) => onText(e.target.value)}
+          onChange={onText}
           onBlur={onDoneEditing}
-          onPointerDown={(e) => e.stopPropagation()}
-          rows={Math.max(1, el.text.split("\n").length)}
-          className={`${fontCls(el.font)} block w-full resize-none overflow-hidden border-0 outline-none`}
+          className={`${fontCls(el.font)} block w-full resize-none overflow-hidden whitespace-pre-wrap break-words border-0 outline-none`}
           style={style}
         />
       ) : (
@@ -270,5 +286,34 @@ function VideoView({ url, live }: { url: string; live: boolean }) {
       <span className="relative grid aspect-square w-[22%] place-items-center rounded-full bg-white/90 text-ink shadow"><Play className="ml-[8%] h-1/2 w-1/2" /></span>
       {!v && <span className="absolute inset-x-[6%] bottom-[6%] truncate text-center font-clean text-white/80" style={{ fontSize: "2cqw" }}>{url}</span>}
     </div>
+  );
+}
+
+/** Textarea that grows to fit its text, including lines that wrap on their own. */
+function AutoTextarea({ value, onChange, onBlur, placeholder, maxLength, className, style }: {
+  value: string; onChange: (v: string) => void; onBlur: () => void; placeholder?: string; maxLength?: number;
+  className?: string; style?: CSSProperties;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const t = ref.current;
+    if (!t) return;
+    t.style.height = "auto";
+    t.style.height = `${t.scrollHeight}px`;
+  });
+  return (
+    <textarea
+      ref={ref}
+      autoFocus
+      rows={1}
+      value={value}
+      maxLength={maxLength}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={className}
+      style={style}
+    />
   );
 }
