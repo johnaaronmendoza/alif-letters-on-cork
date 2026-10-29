@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useDialogFocus } from "@/lib/focus";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import { envelopeFor, type EnvelopeColor, type Letter, type Sticker } from "@/lib/letters";
@@ -38,6 +39,7 @@ export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const reduce = useReducedMotion();
   const env = envelopeFor(letter.id);
+  const dialog = useDialogFocus<HTMLDivElement>();
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -63,6 +65,7 @@ export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin
       initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }}
       onClick={onClose}
       role="dialog" aria-modal="true" aria-label={`letter from ${letter.from_name}`}
+      ref={dialog} tabIndex={-1}
     >
       {/* soft, warm backdrop instead of a flat dark wash */}
       <div className="fixed inset-0 bg-[#1c140e]/55 backdrop-blur-md" />

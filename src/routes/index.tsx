@@ -160,6 +160,15 @@ function Room() {
                   style={extended ? { maskImage: "linear-gradient(to bottom, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 95%, transparent)" } : undefined}
                 />
                 {intro && <BoardIntro onStamp={stamp} onDone={introDone} />}
+                {!intro && letters.length === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, rotate: -6 }} animate={{ opacity: 1, y: 0, rotate: -4 }} transition={{ delay: 0.6, ...spring.soft }}
+                    className="absolute left-[3%] top-[5%] z-10 w-[18%] min-w-[120px] bg-[#f8f4ea] px-[1.2%] py-[1%] text-center font-typewriter text-[clamp(10px,1vw,14px)] leading-snug text-ink shadow-[0_2px_4px_rgb(0_0_0/.2),0_8px_14px_-6px_rgb(0_0_0/.3)]"
+                  >
+                    <span className="absolute -top-[0.6em] left-1/2 h-[1.2em] w-[45%] -translate-x-1/2 rotate-2 bg-tape/80" />
+                    no letters yet —<br />be the first to pin one ✉
+                  </motion.div>
+                )}
                 {!intro && letters.map((l, i) => {
                   const spot = spots.get(l.id);
                   return spot ? (
@@ -170,6 +179,7 @@ function Room() {
             </div>
           </div>
         </div>
+        <p className="mt-1 text-center font-clean text-xs text-ink/70 md:hidden">swipe sideways to see the whole board ↔</p>
       </section>
 
       {!intro && (
@@ -195,17 +205,29 @@ function Room() {
 
       <AnimatePresence>
         {open && (
-          <Suspense key="open" fallback={null}>
+          <Suspense key="open" fallback={<Opening />}>
             <LetterOpen letter={open.letter} origin={open.rect} onClose={() => setOpen(null)} />
           </Suspense>
         )}
         {studio && (
-          <Suspense key="studio" fallback={null}>
+          <Suspense key="studio" fallback={<Opening />}>
             <LetterStudio letters={letters} onClose={() => setStudio(false)} onPinned={onPinned} />
           </Suspense>
         )}
       </AnimatePresence>
     </main>
     </MotionConfig>
+  );
+}
+
+/** Shown for the moment the opener or the editor takes to load the first time. */
+function Opening() {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#1c140e]/40 backdrop-blur-sm" role="status" aria-live="polite">
+      <span className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-2.5 font-clean text-sm text-ink shadow-lg">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink/20 border-t-ink" aria-hidden />
+        opening…
+      </span>
+    </div>
   );
 }

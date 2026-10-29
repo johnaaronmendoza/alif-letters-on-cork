@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useDialogFocus } from "@/lib/focus";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, Check, ChevronLeft, CirclePlus, ChevronRight, Copy, Eye, EyeOff, ImageIcon, Layers, Link2, Maximize, Mic, Minus, Pencil,
@@ -55,6 +56,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   const colorInput = useRef<HTMLInputElement>(null);
 
   const sel = els.find((e) => e.id === selected) ?? null;
+  const focusRoot = useDialogFocus<HTMLDivElement>();
 
   // ── history ────────────────────────────────────────────────
   const commit = useCallback((next: CanvasEl[]) => {
@@ -246,6 +248,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
       className="fixed inset-0 z-50 flex bg-ink/50 backdrop-blur-sm sm:p-4"
       initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.25, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }}
       role="dialog" aria-modal="true" aria-label="write a letter"
+      ref={focusRoot} tabIndex={-1}
     >
       <motion.div
         style={{ transformOrigin: "100% 100%" }}
@@ -353,7 +356,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                           <img src={cardSrc} alt="photocard" className="h-16 w-14 rounded object-cover shadow-sm" />
                           <div className="flex flex-1 flex-col items-start gap-1 text-sm">
                             <button className="min-h-9 underline-offset-2 hover:underline" onClick={() => cardInput.current?.click()}>replace</button>
-                            <button className="min-h-9 text-ink/50 underline-offset-2 hover:underline" onClick={() => { setCardSrc(null); files.current.delete("photocard"); }}>remove</button>
+                            <button className="min-h-9 text-ink/65 underline-offset-2 hover:underline" onClick={() => { setCardSrc(null); files.current.delete("photocard"); }}>remove</button>
                           </div>
                         </div>
                       ) : (
@@ -366,7 +369,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                     </motion.div>
                   )}
                 </AnimatePresence>
-                {!photocard && <p className="-mt-1 text-xs text-ink/50">tuck a printed photo in with your letter</p>}
+                {!photocard && <p className="-mt-1 text-xs text-ink/70">tuck a printed photo in with your letter</p>}
               </Section>
 
               <Section title="paper">
@@ -654,9 +657,11 @@ function AddDialog({ dialog, current, onClose, onLink, onVideo, onAudio }: {
     return () => clearInterval(t);
   }, [recording]);
 
+  const [urlError, setUrlError] = useState("");
   const submitUrl = () => {
     const clean = safeUrl(url);
-    if (!clean) { toast.error("that link doesn't look right"); return; }
+    if (!clean) { setUrlError("that link doesn't look right — check it and try again"); return; }
+    setUrlError("");
     if (kind === "video") {
       if (!parseVideo(clean)) toast("this link won't play inside the letter — it'll show as a tile that opens the video");
       onVideo(clean);
@@ -711,7 +716,7 @@ function AddDialog({ dialog, current, onClose, onLink, onVideo, onAudio }: {
               <Mic className="h-4 w-4" />
               {recording ? `recording ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} — tap to stop` : "record a voice note"}
             </button>
-            <p className="text-xs text-ink/50">up to 10MB, voice notes up to 3 minutes</p>
+            <p className="text-xs text-ink/70">up to 10MB, voice notes up to 3 minutes</p>
             <input ref={audioFile} type="file" accept="audio/*" className="sr-only" tabIndex={-1}
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -725,8 +730,10 @@ function AddDialog({ dialog, current, onClose, onLink, onVideo, onAudio }: {
           <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); submitUrl(); }}>
             <label className="grid gap-1.5 text-sm">
               <span className="text-ink/60">{kind === "video" ? "youtube, vimeo or video file link" : "link"}</span>
-              <input autoFocus inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://"
-                className="min-h-11 rounded-lg border border-black/15 px-3 outline-none focus:border-ink" />
+              <input autoFocus inputMode="url" value={url} onChange={(e) => { setUrl(e.target.value); setUrlError(""); }} placeholder="https://"
+                aria-invalid={!!urlError} aria-describedby={urlError ? "url-error" : undefined}
+                className={`min-h-11 rounded-lg border px-3 outline-none focus:border-ink ${urlError ? "border-cherry" : "border-black/15"}`} />
+              {urlError && <span id="url-error" className="text-xs text-cherry">{urlError}</span>}
             </label>
             {kind === "link" && (
               <label className="grid gap-1.5 text-sm">
