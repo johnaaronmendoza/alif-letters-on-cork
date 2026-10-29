@@ -417,7 +417,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
                 {/* make your own: any picture becomes a die-cut sticker; the ones you make stay here to reuse */}
                 <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
                   <button onClick={() => stickerInput.current?.click()}
-                    className="paper-card flex h-16 shrink-0 flex-col items-center justify-center gap-1 rounded-[3px] px-3 font-typewriter text-[11px] uppercase tracking-[0.08em] text-ink/75 transition hover:-translate-y-0.5 hover:text-ink active:scale-95">
+                    className="paper-card flex h-16 shrink-0 flex-col items-center justify-center gap-1 rounded-[3px] px-3 font-typewriter text-[11px] uppercase tracking-[0.08em] text-ink/75 transition-[transform,color] duration-200 hover:-translate-y-0.5 hover:text-ink active:scale-95">
                     <ImagePlus className="h-5 w-5" strokeWidth={1.6} aria-hidden />
                     make your own
                   </button>
@@ -447,7 +447,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
               <div className={tab("add")}>
               <Section title="photocard" action={
                 <button role="switch" aria-checked={photocard} aria-label="include a photocard" onClick={() => setPhotocard(!photocard)}
-                  className={`grid h-7 w-7 place-items-center rounded-md border transition-colors duration-200 ${photocard ? "border-[#8a1c24] bg-[#8a1c24] text-white" : "border-black/20 bg-white"}`}>
+                  className={`relative grid h-7 w-7 place-items-center rounded-md border transition-colors after:absolute after:-inset-2 after:content-[''] duration-200 ${photocard ? "border-[#8a1c24] bg-[#8a1c24] text-white" : "border-black/20 bg-white"}`}>
                   {photocard && <Check className="h-4 w-4" />}
                 </button>
               }>
@@ -650,7 +650,7 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
 function Tile({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className="paper-card flex min-h-20 flex-col items-center justify-center gap-2 rounded-[3px] text-ink/75 transition duration-200 odd:-rotate-[0.8deg] even:rotate-[0.6deg] hover:-translate-y-0.5 hover:rotate-0 hover:text-ink active:translate-y-0 active:scale-[0.98]">
+      className="paper-card flex min-h-20 flex-col items-center justify-center gap-2 rounded-[3px] text-ink/75 transition-[transform,color] duration-200 odd:-rotate-[0.8deg] even:rotate-[0.6deg] hover:-translate-y-0.5 hover:rotate-0 hover:text-ink active:translate-y-0 active:scale-[0.98]">
       {icon}
       <span className="font-typewriter text-xs uppercase tracking-[0.12em]">{label}</span>
     </button>
@@ -662,7 +662,7 @@ function IconBtn({ label, onClick, disabled, small, className = "", children }: 
 }) {
   return (
     <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled}
-      className={`grid shrink-0 place-items-center rounded-lg text-ink/70 transition-colors duration-200 hover:bg-black/5 hover:text-ink disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent ${small ? "h-9 w-9" : "h-11 w-11"} ${className}`}>
+      className={`grid shrink-0 place-items-center rounded-lg text-ink/70 transition-colors duration-200 hover:bg-black/5 hover:text-ink disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent ${small ? "relative h-9 w-9 after:absolute after:-inset-1 after:content-['']" : "h-11 w-11"} ${className}`}>
       {children}
     </button>
   );
@@ -747,7 +747,7 @@ function Swatch({ label, color, open, onToggle, children }: { label: string; col
 function ColorDot({ color, active, onClick }: { color: string | null; active: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} aria-label={color ? `color ${color}` : "none"} aria-pressed={active}
-      className={`h-9 w-9 shrink-0 rounded-full border border-black/15 transition-transform duration-150 hover:scale-110 ${active ? "ring-2 ring-ink ring-offset-2" : ""}`}
+      className={`relative h-9 w-9 shrink-0 rounded-full border border-black/15 transition-transform after:absolute after:-inset-0.5 after:rounded-full after:content-[''] duration-150 hover:scale-110 ${active ? "ring-2 ring-ink ring-offset-2" : ""}`}
       style={{ background: color ?? "repeating-linear-gradient(45deg,#fff 0 4px,#ddd 4px 8px)" }} />
   );
 }

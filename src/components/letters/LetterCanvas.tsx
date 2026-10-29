@@ -248,7 +248,7 @@ function ImageView({ src, sticker, rounded }: { src: string; sticker?: boolean; 
   if (!url) return <div className="h-full w-full animate-pulse bg-ink/10" />;
   if (sticker)
     return <img src={url} alt="" draggable={false} className={`h-full w-full object-contain ${rounded ? "rounded-[10%]" : ""}`} style={{ filter: DIE_CUT }} />;
-  return <img src={url} alt="" draggable={false} className="h-full w-full object-cover shadow-sm" />;
+  return <img src={url} alt="" draggable={false} className="h-full w-full object-cover shadow-sm outline outline-1 -outline-offset-1 outline-black/10" />;
 }
 
 function StickerView({ name, photo }: { name: string; photo?: string | null }) {

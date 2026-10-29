@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, m, useAnimate } from "framer-motion";
 import { INTRO_PIECES, type IntroPiece } from "@/lib/intro";
 import { ART_ASPECT, jitter } from "@/lib/letters";
+import { spring } from "@/lib/motion";
 
 /**
  * Plays over the collage on first load. The camera settles on bare cork, the pieces
@@ -175,7 +176,7 @@ function Piece({ piece: p, delay, move }: { piece: IntroPiece; delay: number; mo
         src={src(p.name)} alt="" draggable={false} className="absolute select-none" style={style}
         initial={{ opacity: 0, x: fromLeft ? "-90%" : "90%", y: "-35%", rotate: (fromLeft ? -1 : 1) * (22 + spin * 10), scale: 1.12 }}
         animate={{ opacity: 1, x: "0%", y: "0%", rotate: 0, scale: 1 }}
-        transition={{ delay, type: "spring", stiffness: 240, damping: 19, mass: 0.9, opacity: { delay, duration: 0.1 } }}
+        transition={{ ...spring.toss, delay, opacity: { delay, duration: 0.1 } }}
       />
     );
   }

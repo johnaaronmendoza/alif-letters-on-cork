@@ -10,6 +10,14 @@ export const spring = {
   soft: { type: "spring", stiffness: 260, damping: 26 },
   /** Small presses and toggles. */
   snappy: { type: "spring", stiffness: 500, damping: 32 },
+  /** Figures popping onto the shelf at the end of the intro. */
+  pop: { type: "spring", stiffness: 420, damping: 15 },
+  /** Intro photos tossed onto the board. */
+  toss: { type: "spring", stiffness: 240, damping: 19, mass: 0.9 },
+  /** Letter paper sliding up out of its envelope. */
+  rise: { type: "spring", stiffness: 120, damping: 18 },
+  /** Doll eyes trailing the cursor, deliberately late. */
+  gaze: { stiffness: 60, damping: 16 },
 } as const;
 
 export const ease = {

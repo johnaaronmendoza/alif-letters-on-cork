@@ -31,7 +31,7 @@ export function BoardFigures({ muted, layout = "corners" }: { muted: boolean; la
       // finale: the figures pop in one after another
       initial={{ opacity: 0, scale: 0.35, y: 14 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 420, damping: 15, delay: 0.15 + i * 0.12, opacity: { duration: 0.12, delay: 0.15 + i * 0.12 } }}
+      transition={{ ...spring.pop, delay: 0.15 + i * 0.12, opacity: { duration: 0.12, delay: 0.15 + i * 0.12 } }}
     >
       {/* idle wiggle, staggered, until a toy has been found */}
       <m.div
@@ -305,8 +305,8 @@ function Doll({ f }: { f: Figure }) {
   const root = useRef<HTMLDivElement>(null);
   const tx = useMotionValue(0), ty = useMotionValue(0);
   // eyes drift after the cursor slightly late, which is creepier than snapping
-  const sx = useSpring(tx, { stiffness: 60, damping: 16 });
-  const sy = useSpring(ty, { stiffness: 60, damping: 16 });
+  const sx = useSpring(tx, spring.gaze);
+  const sy = useSpring(ty, spring.gaze);
   // offsets are in doll pixels; % translate is relative to the iris image's own size
   const x = useTransform(sx, (p: number) => `${(p / IRIS_SIZE) * 100}%`);
   const y = useTransform(sy, (p: number) => `${(p / IRIS_SIZE) * 100}%`);

@@ -216,7 +216,7 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
         className="absolute inset-x-[9%] top-[15%] h-[70%] rounded-[2px] bg-[#fdfbf6]"
         style={{ zIndex: 3, backgroundImage: PAPER_GRAIN, boxShadow: "0 2px 6px rgb(0 0 0 / .14)" }}
         animate={stage === "rise" ? { y: "-62%" } : { y: "0%" }}
-        transition={{ type: "spring", stiffness: 120, damping: 18 }}
+        transition={spring.rise}
       >
         <div className="absolute inset-x-0 top-1/3 h-px bg-black/[.07] shadow-[0_1px_0_rgb(255_255_255/.8)]" />
         <div className="absolute inset-x-0 top-2/3 h-px bg-black/[.07] shadow-[0_1px_0_rgb(255_255_255/.8)]" />
