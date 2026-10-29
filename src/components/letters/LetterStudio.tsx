@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useDialogFocus } from "@/lib/focus";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowLeft, Check, ChevronLeft, CirclePlus, Pin, ChevronRight, Copy, Eye, EyeOff, ImageIcon, Layers, Link2, Maximize, Mic, Minus, Pencil,
+  ArrowLeft, Check, ChevronLeft, CirclePlus, ImagePlus, Pin, ChevronRight, Copy, Eye, EyeOff, ImageIcon, Layers, Link2, Maximize, Mic, Minus, Pencil,
   Plus, Redo2, RotateCw, Square, Trash2, Type, Undo2, Upload, Video, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -170,6 +170,48 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
   const addText = () => {
     const id = add({ kind: "text", text: "", font: "caveat", color: "#2B2B2B", bg: null, size: 5.5, w: 56, h: 9 });
     setTimeout(() => edit(id), 0);
+  };
+
+  // ── your own stickers ────────────────────────────────────────
+  const [mine, setMine] = useState<{ url: string; blob: Blob; aspect: number; rounded: boolean }[]>([]);
+  const stickerInput = useRef<HTMLInputElement>(null);
+
+  /** Shrinks a picture to sticker size (keeps transparency) and checks whether it has any. */
+  const prepareSticker = async (file: File) => {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 700 / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(bmp, 0, 0, w, h);
+    bmp.close();
+    // transparent if any sampled pixel is see-through (photos aren't; cut-out PNGs are)
+    const data = ctx.getImageData(0, 0, w, h).data;
+    let transparent = false;
+    for (let i = 3; i < data.length; i += 4 * 97) if (data[i]! < 250) { transparent = true; break; }
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, transparent ? "image/png" : "image/webp", 0.9));
+    if (!blob) throw new Error("couldn't read that picture");
+    return { blob, aspect: h / w, rounded: !transparent };
+  };
+
+  const placeSticker = (m: { url: string; blob: Blob; aspect: number; rounded: boolean }) => {
+    const w = m.aspect > 1.3 ? 20 : 26;
+    const id = add({ kind: "image", src: m.url, sticker: true, rounded: m.rounded, w, h: heightFor(w, m.aspect), r: Math.round(Math.random() * 10 - 5) });
+    files.current.set(`${id}:src`, m.blob);
+  };
+
+  const makeSticker = async (file: File) => {
+    if (!file.type.startsWith("image/")) { toast.error("pick a picture to turn into a sticker"); return; }
+    if (file.size > MAX_IMAGE) { toast.error("images must be under 8MB"); return; }
+    try {
+      const { blob, aspect, rounded } = await prepareSticker(file);
+      const made = { url: URL.createObjectURL(blob), blob, aspect, rounded };
+      setMine((list) => [made, ...list]);
+      placeSticker(made);
+    } catch {
+      toast.error("couldn't read that picture — try a different one");
+    }
   };
 
   const pickImage = (file: File) => {
@@ -372,6 +414,22 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
                   </div>
                 }
               >
+                {/* make your own: any picture becomes a die-cut sticker; the ones you make stay here to reuse */}
+                <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+                  <button onClick={() => stickerInput.current?.click()}
+                    className="paper-card flex h-16 shrink-0 flex-col items-center justify-center gap-1 rounded-[3px] px-3 font-typewriter text-[11px] uppercase tracking-[0.08em] text-ink/75 transition hover:-translate-y-0.5 hover:text-ink active:scale-95">
+                    <ImagePlus className="h-5 w-5" strokeWidth={1.6} aria-hidden />
+                    make your own
+                  </button>
+                  {mine.map((m) => (
+                    <button key={m.url} onClick={() => placeSticker(m)} aria-label="add your sticker again" title="add again"
+                      className="grid h-16 w-16 shrink-0 place-items-center rounded-lg p-1.5 transition-transform hover:scale-105 hover:bg-black/5 active:scale-95">
+                      <img src={m.url} alt="" draggable={false}
+                        className={`max-h-full max-w-full object-contain ${m.rounded ? "rounded-md" : ""}`}
+                        style={{ filter: "drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)" }} />
+                    </button>
+                  ))}
+                </div>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div key={page} className="grid grid-cols-3 gap-2"
                     initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10, transition: fadeOut }} transition={{ duration: 0.2, ease: ease.out }}>
@@ -530,6 +588,8 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
           </div>
         </div>
 
+        <input ref={stickerInput} type="file" accept="image/*" className="sr-only" tabIndex={-1}
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void makeSticker(f); }} />
         <input ref={cardInput} type="file" accept="image/*" className="sr-only" tabIndex={-1}
           onChange={(e) => {
             const f = e.target.files?.[0];

@@ -210,7 +210,7 @@ function ElementView({ el, mode, editing, onText, onDoneEditing }: {
       ) : inner;
     }
     case "image":
-      return <ImageView src={el.src} />;
+      return <ImageView src={el.src} sticker={el.sticker} rounded={el.rounded} />;
     case "audio":
       return <AudioView src={el.src} name={el.name} live={live} />;
     case "video":
@@ -220,9 +220,17 @@ function ElementView({ el, mode, editing, onText, onDoneEditing }: {
   }
 }
 
-function ImageView({ src }: { src: string }) {
+/** White die-cut edge that follows the picture's shape (stacked hard shadows), plus a soft drop shadow. */
+const DIE_CUT = ([
+  [1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7],
+] as [number, number][]).map(([x, y]) => `drop-shadow(${x * 0.55}cqw ${y * 0.55}cqw 0 #fff)`).join(" ") + " drop-shadow(0 0.6cqw 0.8cqw rgb(40 25 10 / .35))";
+
+function ImageView({ src, sticker, rounded }: { src: string; sticker?: boolean; rounded?: boolean }) {
   const url = useSrc(src);
-  return url ? <img src={url} alt="" draggable={false} className="h-full w-full object-cover shadow-sm" /> : <div className="h-full w-full animate-pulse bg-ink/10" />;
+  if (!url) return <div className="h-full w-full animate-pulse bg-ink/10" />;
+  if (sticker)
+    return <img src={url} alt="" draggable={false} className={`h-full w-full object-contain ${rounded ? "rounded-[10%]" : ""}`} style={{ filter: DIE_CUT }} />;
+  return <img src={url} alt="" draggable={false} className="h-full w-full object-cover shadow-sm" />;
 }
 
 function StickerView({ name, photo }: { name: string; photo?: string | null }) {

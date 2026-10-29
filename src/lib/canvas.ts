@@ -8,7 +8,14 @@ export type ElementBase = { id: string; x: number; y: number; w: number; h: numb
 
 export type TextEl = ElementBase & { kind: "text"; text: string; font: FontId; color: string; bg: string | null; size: number };
 export type LinkEl = ElementBase & { kind: "link"; url: string; label: string };
-export type ImageEl = ElementBase & { kind: "image"; src: string };
+export type ImageEl = ElementBase & {
+  kind: "image";
+  src: string;
+  /** A sticker someone made from their own picture: die-cut white outline instead of a photo print. */
+  sticker?: boolean;
+  /** Their picture had no transparency, so the sticker is a rounded rectangle. */
+  rounded?: boolean;
+};
 export type AudioEl = ElementBase & { kind: "audio"; src: string; name: string };
 export type VideoEl = ElementBase & { kind: "video"; url: string };
 export type StickerEl = ElementBase & { kind: "sticker"; name: StickerName; photo?: string | null };
