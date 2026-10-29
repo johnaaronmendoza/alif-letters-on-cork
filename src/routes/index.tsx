@@ -38,22 +38,17 @@ function Room() {
   const mutedRef = useRef(false);
   mutedRef.current = muted;
   const knownIds = useRef(new Set<string>());
-  // intro plays once per visit; on by default so the full collage never flashes first
+  // intro plays on every load; on by default so the full collage never flashes first
   const [intro, setIntro] = useState(true);
   const [board, animateBoard] = useAnimate();
   useEffect(() => {
-    let seen = false;
-    try { seen = sessionStorage.getItem("alif-intro-seen") === "1"; } catch { /* storage blocked */ }
-    if (seen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntro(false);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntro(false);
   }, []);
   const stamp = () => {
     if (board.current) void animateBoard(board.current, { x: [0, -12, 10, -7, 4, -2, 0], y: [0, 6, -4, 3, -1, 0] }, { duration: 0.45, ease: "easeOut" });
     if (!mutedRef.current) playStamp();
   };
-  const introDone = () => {
-    setIntro(false);
-    try { sessionStorage.setItem("alif-intro-seen", "1"); } catch { /* storage blocked */ }
-  };
+  const introDone = () => setIntro(false);
 
   useEffect(() => {
     setMuted(localStorage.getItem("alif-muted") === "1");
