@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, motion, useAnimate, useMotionValue, useSpring } from "framer-motion";
+import { AnimatePresence, motion, useAnimate, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { FIGURES, type Figure } from "@/lib/figures";
 import { ease, spring } from "@/lib/motion";
 
@@ -252,43 +252,74 @@ function Mints({ f, muted }: { f: Figure; muted: boolean }) {
 
 // ── doll ──────────────────────────────────────────────────────────
 
+/** Eye windows on the 421×600 doll image: each eye white (centre, radii) and its iris crop box, in px. */
+const DOLL = { w: 421, h: 600 };
+const EYES = [
+  { key: "l", cx: 152.5, cy: 204.5, rx: 21, ry: 16.5, iris: [135, 184, 172, 221] },
+  { key: "r", cx: 253.5, cy: 204.5, rx: 21, ry: 16.5, iris: [234, 183, 271, 220] },
+] as const;
+const IRIS_SIZE = 37; // iris crop size in doll pixels (stored at 3× for sharpness)
+
 function Doll({ f }: { f: Figure }) {
-  const head = useRef<HTMLImageElement>(null);
-  const turnTarget = useMotionValue(0), tiltTarget = useMotionValue(0), nodTarget = useMotionValue(0);
-  // slow, slightly lagging follow: creepier than snapping
-  const turn = useSpring(turnTarget, { stiffness: 30, damping: 14 });
-  const tilt = useSpring(tiltTarget, { stiffness: 30, damping: 14 });
-  const nod = useSpring(nodTarget, { stiffness: 30, damping: 14 });
-  const [spin, setSpin] = useState(0);
+  const root = useRef<HTMLDivElement>(null);
+  const tx = useMotionValue(0), ty = useMotionValue(0);
+  // eyes drift after the cursor slightly late, which is creepier than snapping
+  const sx = useSpring(tx, { stiffness: 60, damping: 16 });
+  const sy = useSpring(ty, { stiffness: 60, damping: 16 });
+  // offsets are in doll pixels; % translate is relative to the iris image's own size
+  const x = useTransform(sx, (p: number) => `${(p / IRIS_SIZE) * 100}%`);
+  const y = useTransform(sy, (p: number) => `${(p / IRIS_SIZE) * 100}%`);
+  const [blink, setBlink] = useState(0);
 
   useEffect(() => {
     const look = (e: PointerEvent) => {
-      const el = head.current;
+      const el = root.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height * 0.3);
-      const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
-      turnTarget.set(clamp(dx / 18, 32));
-      tiltTarget.set(clamp(dx / 60, 12));
-      nodTarget.set(clamp(-dy / 30, 14));
+      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height * 0.34);
+      const dist = Math.hypot(dx, dy) || 1;
+      const reach = Math.min(1, dist / 300); // look fully sideways once the cursor is a little way off
+      tx.set((dx / dist) * reach * 7.5);
+      ty.set((dy / dist) * reach * 5);
     };
     window.addEventListener("pointermove", look);
     window.addEventListener("pointerdown", look);
     return () => { window.removeEventListener("pointermove", look); window.removeEventListener("pointerdown", look); };
-  }, [turnTarget, tiltTarget, nodTarget]);
+  }, [tx, ty]);
 
   return (
-    <Toy label="poke the doll" onTap={() => setSpin((s) => s + 360)}>
-      <img src="/figures/doll-body.webp" alt={f.alt} draggable={false} className={figureImg} />
-      {/* poke it and the head does a full turn, then goes back to watching you */}
-      <motion.div className="absolute inset-0" style={{ originX: 0.5, originY: 0.455 }} animate={{ rotate: spin }} transition={{ duration: 0.9, ease: [0.6, 0, 0.3, 1] }}>
-        <motion.img
-          ref={head}
-          src="/figures/doll-head.webp" alt="" draggable={false}
-          className="block w-full select-none"
-          style={{ rotateY: turn, rotateX: nod, rotate: tilt, transformPerspective: 600, originX: 0.5, originY: 0.455 }}
-        />
-      </motion.div>
+    <Toy label="poke the doll" onTap={() => setBlink((b) => b + 1)}>
+      <div ref={root} className="relative">
+        <img src="/figures/doll-eyeless.webp" alt={f.alt} draggable={false} className={figureImg} />
+        {EYES.map((e) => {
+          const [x0, y0] = e.iris;
+          const left = e.cx - e.rx, top = e.cy - e.ry, w = e.rx * 2, h = e.ry * 2;
+          return (
+            // each eye is a window onto its iris, so the iris can only move within the eye white
+            <span
+              key={e.key}
+              className="absolute block overflow-hidden rounded-[50%]"
+              style={{ left: `${(left / DOLL.w) * 100}%`, top: `${(top / DOLL.h) * 100}%`, width: `${(w / DOLL.w) * 100}%`, height: `${(h / DOLL.h) * 100}%` }}
+            >
+              <motion.img
+                src={`/figures/doll-iris-${e.key}.webp`} alt="" draggable={false}
+                className="absolute block h-auto max-w-none select-none"
+                style={{ width: `${(IRIS_SIZE / w) * 100}%`, left: `${((x0 - left) / w) * 100}%`, top: `${((y0 - top) / h) * 100}%`, x, y }}
+              />
+              {/* poke it and it blinks at you */}
+              {blink > 0 && (
+                <motion.span
+                  key={blink}
+                  className="absolute inset-0 block origin-top bg-[#efc2a2]"
+                  initial={{ scaleY: 0 }}
+                  animate={{ scaleY: [0, 1, 1, 0] }}
+                  transition={{ duration: 0.32, times: [0, 0.35, 0.6, 1] }}
+                />
+              )}
+            </span>
+          );
+        })}
+      </div>
     </Toy>
   );
 }

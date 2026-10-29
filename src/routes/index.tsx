@@ -92,15 +92,21 @@ function Room() {
     <main className="wall relative min-h-screen overflow-x-hidden pb-28">
       {/* the collage carries the title; keep a heading for screen readers */}
       <h1 className="sr-only">Letters for Alif — {letters.length} {letters.length === 1 ? "letter" : "letters"} pinned</h1>
-      <button onClick={() => { setMuted(!muted); localStorage.setItem("alif-muted", muted ? "0" : "1"); }} aria-label={muted ? "unmute" : "mute"} className="absolute right-4 top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-card/80 text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
+      <button onClick={() => { setMuted(!muted); localStorage.setItem("alif-muted", muted ? "0" : "1"); }} aria-label={muted ? "unmute" : "mute"} className="fixed bottom-5 left-5 z-40 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-card/80 text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
 
-      <section className="relative mx-auto mt-20 w-full md:mt-[max(6rem,9vw)]">
-        {!intro && <BoardFigures muted={muted} />}
-
-        <div className="overflow-x-auto px-4 pb-4 sm:px-0">
-          <div className="relative mx-auto w-[900px] max-w-none sm:w-[80%] sm:min-w-[640px]">
+      <section className="relative mx-auto w-full pt-16 md:pt-[clamp(5rem,11vh,8rem)]">
+        {/* phones: the board keeps a readable width and scrolls sideways.
+            md+: it is sized so the whole board, plus room for the figures above
+            and the write button below, fits in the window. */}
+        <div className="overflow-x-auto px-4 pb-4 md:overflow-visible md:px-0 md:pb-0">
+          <div
+            className="relative mx-auto w-[900px] max-w-none md:w-[min(76vw,calc((100svh-15rem)*1.78))] md:min-w-[600px]"
+            style={{ containerType: "inline-size" }}
+          >
+            {/* figures sit on the board's corners, positioned relative to the board itself */}
+            {!intro && <BoardFigures muted={muted} />}
             <div ref={board} className="frame rounded-md p-[2.2%]">
               <div className="cork-photo relative w-full overflow-hidden rounded-sm" style={{ aspectRatio: `${ART_ASPECT} / ${height / 100}` }}>
                 {/* Alif's collage is the board; letters pin into the open cork around it,
