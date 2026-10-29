@@ -1,15 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion, useAnimate } from "framer-motion";
 import { Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { ART_ASPECT, layoutBoard, playStamp, playThunk, type Letter } from "@/lib/letters";
+import { ART_ASPECT, envelopeFor, layoutBoard, playStamp, playThunk, type Letter } from "@/lib/letters";
 import { spring } from "@/lib/motion";
 import { BoardFigures } from "@/components/letters/Figures";
 import { BoardItem } from "@/components/letters/BoardItem";
-import { LetterOpen } from "@/components/letters/LetterOpen";
-import { LetterStudio } from "@/components/letters/LetterStudio";
 import { BoardIntro } from "@/components/letters/BoardIntro";
+
+// The editor and the opener are only needed after a tap, so they load on demand
+// (and are prefetched on hover / once the intro is done).
+const loadOpen = () => import("@/components/letters/LetterOpen");
+const loadStudio = () => import("@/components/letters/LetterStudio");
+const LetterOpen = lazy(() => loadOpen().then((m) => ({ default: m.LetterOpen })));
+const LetterStudio = lazy(() => loadStudio().then((m) => ({ default: m.LetterStudio })));
+
+/** Warm up everything opening this letter needs: the opener code and its envelope layers. */
+const warmed = new Set<string>();
+function prefetchOpen(envelope: string) {
+  void loadOpen();
+  for (const src of ["/board/seal.webp", ...["pocket", "flap", "pin"].map((p) => `/board/envelopes/open/${envelope}-${p}.webp`)]) {
+    if (warmed.has(src)) continue;
+    warmed.add(src);
+    const img = new Image();
+    img.src = src;
+  }
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,6 +41,10 @@ export const Route = createFileRoute("/")({
       { property: "og:image:height", content: "630" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:image", content: "/og.jpg" },
+    ],
+    links: [
+      // the intro's first frame: fetched before the (hidden-for-now) collage
+      { rel: "preload", as: "image", href: "/board/intro/empty.webp", fetchPriority: "high" },
     ],
   }),
   component: Room,
@@ -49,6 +70,12 @@ function Room() {
     if (!mutedRef.current) playStamp();
   };
   const introDone = () => setIntro(false);
+  useEffect(() => {
+    if (intro) return;
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
+    const t = idle ? idle(() => void loadStudio()) : window.setTimeout(() => void loadStudio(), 1500);
+    return () => { if (!idle) clearTimeout(t); };
+  }, [intro]);
 
   useEffect(() => {
     setMuted(localStorage.getItem("alif-muted") === "1");
@@ -111,11 +138,13 @@ function Room() {
                 {/* Alif's collage is the board; letters pin into the open cork around it,
                     and the cork carries on below once those spots are full. */}
                 <img
-                  src="/board/base.webp"
+                  src="/board/base-1600.webp"
+                  srcSet="/board/base-1600.webp 1600w, /board/base.webp 2400w"
+                  sizes="(min-width: 768px) min(76vw, 1600px), 900px"
                   alt="Alif's byebye collage: photos of Alif, a photo booth strip, a pig keychain, rock and Arsenal stickers"
                   width={2400}
                   height={1295}
-                  fetchPriority="high"
+                  fetchPriority={intro ? "low" : "high"}
                   draggable={false}
                   className="pointer-events-none absolute left-0 top-0 block h-auto w-full select-none"
                   style={extended ? { maskImage: "linear-gradient(to bottom, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 95%, transparent)" } : undefined}
@@ -124,7 +153,7 @@ function Room() {
                 {!intro && letters.map((l, i) => {
                   const spot = spots.get(l.id);
                   return spot ? (
-                    <BoardItem key={l.id} letter={l} spot={spot} boardHeight={height} index={i} isNew={newIds.has(l.id)} onOpen={(rect) => setOpen({ letter: l, rect })} />
+                    <BoardItem key={l.id} letter={l} spot={spot} boardHeight={height} index={i} isNew={newIds.has(l.id)} onPrefetch={() => prefetchOpen(envelopeFor(l.id).name)} onOpen={(rect) => setOpen({ letter: l, rect })} />
                   ) : null;
                 })}
               </div>
@@ -136,6 +165,8 @@ function Room() {
       {!intro && (
       <motion.button
         onClick={() => setStudio(true)}
+        onPointerEnter={() => void loadStudio()}
+        onFocus={() => void loadStudio()}
         className="paper-tag fixed bottom-5 right-5 z-40 min-h-11 cursor-pointer px-5 py-3 pl-8 font-hand text-2xl text-ink focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
         initial={{ y: 90, opacity: 0, rotate: -4 }}
         animate={{ y: 0, opacity: 1, rotate: [-4, -4, -9, 1, -6, -4] }}
@@ -153,8 +184,16 @@ function Room() {
       )}
 
       <AnimatePresence>
-        {open && <LetterOpen key="open" letter={open.letter} origin={open.rect} onClose={() => setOpen(null)} />}
-        {studio && <LetterStudio key="studio" letters={letters} onClose={() => setStudio(false)} onPinned={onPinned} />}
+        {open && (
+          <Suspense key="open" fallback={null}>
+            <LetterOpen letter={open.letter} origin={open.rect} onClose={() => setOpen(null)} />
+          </Suspense>
+        )}
+        {studio && (
+          <Suspense key="studio" fallback={null}>
+            <LetterStudio letters={letters} onClose={() => setStudio(false)} onPinned={onPinned} />
+          </Suspense>
+        )}
       </AnimatePresence>
     </main>
     </MotionConfig>

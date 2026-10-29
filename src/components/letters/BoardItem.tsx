@@ -23,7 +23,7 @@ export function Pin({ color }: { color: string }) {
 }
 
 export function BoardItem({
-  letter, spot, boardHeight, isNew, index, onOpen,
+  letter, spot, boardHeight, isNew, index, onOpen, onPrefetch,
 }: {
   letter: Letter;
   spot: BoardSpot;
@@ -33,6 +33,8 @@ export function BoardItem({
   /** Position in load order, used for the entrance stagger. */
   index: number;
   onOpen: (rect: DOMRect) => void;
+  /** Called on hover / focus / press, to warm up what opening needs. */
+  onPrefetch?: () => void;
 }) {
   const photocard = isCanvasLetter(letter.stickers) && readCanvas(letter.stickers).photocard && !!letter.photo_url;
   const photo = useMedia(photocard ? letter.photo_url : null);
@@ -49,6 +51,9 @@ export function BoardItem({
       <motion.button
         id={`letter-${letter.id}`}
         onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
+        onPointerEnter={onPrefetch}
+        onPointerDown={onPrefetch}
+        onFocus={onPrefetch}
         style={{ transformOrigin: PIN_ORIGIN }}
         initial={isNew ? { y: -220, opacity: 0, rotate: r - 12, scale: 1.05 } : { opacity: 0, y: 10, rotate: r, scale: 0.96 }}
         animate={{ y: 0, opacity: 1, rotate: r, scale: 1 }}
