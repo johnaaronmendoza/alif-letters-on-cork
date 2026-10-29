@@ -101,6 +101,12 @@ export const ENVELOPE_COLORS = [
 ] as const;
 export type EnvelopeColor = (typeof ENVELOPE_COLORS)[number];
 
+/**
+ * Geometry of the envelope photos (cropped 1063×809 frame): the body rectangle and
+ * the flap tip. The cut layers in /board/envelopes/open/ share this frame.
+ */
+export const ENVELOPE_GEOM = { w: 1063, h: 809, body: { x: 5, y: 101, w: 1041, h: 692 }, tip: { x: 522, y: 600 } };
+
 /** The envelope a letter is shown in, stable per letter. */
 export function envelopeFor(id: string): EnvelopeColor {
   return ENVELOPE_COLORS[Math.floor((jitter(id, 7) + 1) * 2.5) % ENVELOPE_COLORS.length]!;

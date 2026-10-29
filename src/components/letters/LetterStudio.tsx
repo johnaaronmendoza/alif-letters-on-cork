@@ -19,6 +19,11 @@ import { Photocard } from "./Photocard";
 import { PaperSwatch } from "./Paper";
 
 type Dialog = null | { kind: "link" | "video" | "audio"; editId?: string };
+const GREETING_TEXT = "dear alif,\n";
+const GREETING: CanvasEl = { id: "greeting", kind: "text", text: GREETING_TEXT, font: "caveat", color: "#2B2B2B", bg: null, size: 6, x: 9, y: 7, w: 82, h: 9, r: 0, z: 1 };
+/** Nothing written yet: just the untouched greeting (or nothing at all). */
+const untouched = (list: CanvasEl[]) =>
+  list.length === 0 || (list.length === 1 && list[0]!.kind === "text" && list[0]!.text.trim() === GREETING_TEXT.trim());
 /** A new element before it gets an id, stacking order and (optionally) a position. */
 type NewEl = CanvasEl extends infer T ? (T extends CanvasEl ? Omit<T, "id" | "z" | "x" | "y" | "r"> & Partial<Pick<T, "x" | "y" | "r">> : never) : never;
 const same = (a: CanvasEl[], b: CanvasEl[]) => a === b || JSON.stringify(a) === JSON.stringify(b);
@@ -30,7 +35,8 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   const fromInput = useRef<HTMLInputElement>(null);
   const [nameNudge, setNameNudge] = useState(0); // bumps to shake the name field
   const askedName = useRef(false);
-  const [els, setEls] = useState<CanvasEl[]>([]);
+  // start with "dear alif," on the page, so nobody faces a blank sheet
+  const [els, setEls] = useState<CanvasEl[]>(() => [GREETING]);
   const elsRef = useRef(els);
   elsRef.current = els;
   const past = useRef<CanvasEl[][]>([]);
@@ -117,6 +123,11 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
     return id;
   };
 
+  useEffect(() => {
+    if (window.matchMedia("(pointer: fine)").matches) edit(GREETING.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── keyboard ───────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -136,7 +147,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   });
 
   const requestClose = () => {
-    if (elsRef.current.length && !confirm("leave without pinning? your letter will be lost")) return;
+    if (!untouched(elsRef.current) && !confirm("leave without pinning? your letter will be lost")) return;
     onClose();
   };
 
@@ -185,7 +196,12 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
 
   // ── publish ────────────────────────────────────────────────
   const publish = async () => {
-    if (!els.length && !(photocard && cardSrc)) { toast.error("add something to your letter first ♡"); return; }
+    if (untouched(els) && !(photocard && cardSrc)) {
+      toast.error("write alif something first ♡");
+      setSelected(GREETING.id);
+      edit(GREETING.id);
+      return;
+    }
     // the first time someone pins without a name, point them to it once; a second tap sends it anonymously
     if (!from.trim() && !askedName.current) {
       askedName.current = true;
@@ -457,8 +473,8 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   )}
                 </AnimatePresence>
                 </div>
-                {!els.length && !preview && (
-                  <p className="mt-4 text-center text-sm text-ink/60">start with text, a photo or a sticker from the left ♡</p>
+                {untouched(els) && !preview && (
+                  <p className="mt-4 text-center text-sm text-ink/70">keep writing under “dear alif,” — then add photos or stickers from the side ♡</p>
                 )}
               </div>
             </div>

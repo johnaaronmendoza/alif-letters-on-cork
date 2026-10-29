@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useDialogFocus } from "@/lib/focus";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { X } from "lucide-react";
-import { envelopeFor, type EnvelopeColor, type Letter, type Sticker } from "@/lib/letters";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ENVELOPE_GEOM, envelopeFor, type EnvelopeColor, type Letter, type Sticker } from "@/lib/letters";
 import { ease, fadeOut, spring } from "@/lib/motion";
 import { LetterPaper } from "./LetterPaper";
 import { LetterCanvas, useSrc } from "./LetterCanvas";
@@ -23,9 +23,9 @@ const PAPER_GRAIN =
 /** Offset that places the centered envelope back over the item that was tapped. */
 function fromOrigin(origin: DOMRect | undefined) {
   if (typeof window === "undefined" || !origin) return { x: 0, y: 40, scale: 0.6 };
-  // same size as the opened envelope: min(400px, 86vw, (100svh - 12rem) × 1.3)
+  // same size as the opened envelope: min(400px, 86vw, (100svh - 13rem) × 1.3)
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  const width = Math.min(400, window.innerWidth * 0.86, (window.innerHeight - 12 * rem) * 1.3);
+  const width = Math.min(400, window.innerWidth * 0.86, (window.innerHeight - 13 * rem) * 1.3);
   return {
     x: origin.left + origin.width / 2 - window.innerWidth / 2,
     y: origin.top + origin.height / 2 - window.innerHeight / 2,
@@ -33,23 +33,105 @@ function fromOrigin(origin: DOMRect | undefined) {
   };
 }
 
-export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin?: DOMRect; onClose: () => void }) {
-  const [start] = useState(() => fromOrigin(origin));
-  const [stage, setStage] = useState<Stage>("sealed");
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const reduce = useReducedMotion();
+export type LetterNav = {
+  index: number;
+  total: number;
+  /** Which way we arrived: 0 = tapped on the board, 1 = next, -1 = previous. */
+  dir: 0 | 1 | -1;
+  onPrev?: () => void;
+  onNext?: () => void;
+};
+
+const slide = {
+  enter: (d: number) => (d === 0 ? { opacity: 1, x: 0 } : { opacity: 0, x: d * 140 }),
+  center: { opacity: 1, x: 0, transition: { ...spring.soft, opacity: { duration: 0.2 } } },
+  exit: (d: number) => ({ opacity: 0, x: d * -140, transition: { duration: 0.2, ease: ease.in } }),
+};
+
+/** The dialog shell stays put; the letter inside slides when you go to the next or previous one. */
+export function LetterOpen({ letter, origin, nav, onRead, onClose }: {
+  letter: Letter; origin?: DOMRect; nav?: LetterNav; onRead?: (id: string) => void; onClose: () => void;
+}) {
   const env = envelopeFor(letter.id);
   const dialog = useDialogFocus<HTMLDivElement>();
+  const dir = nav?.dir ?? 0;
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight" && nav?.onNext) { e.preventDefault(); nav.onNext(); }
+      if (e.key === "ArrowLeft" && nav?.onPrev) { e.preventDefault(); nav.onPrev(); }
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  });
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 overflow-y-auto"
+      initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }}
+      onClick={onClose}
+      role="dialog" aria-modal="true" aria-label={`letter from ${letter.from_name}`}
+      ref={dialog} tabIndex={-1}
+    >
+      {/* soft, warm backdrop tinted by the current envelope */}
+      <div className="fixed inset-0 bg-[#1c140e]/55 backdrop-blur-md" />
+      <motion.div className="pointer-events-none fixed inset-0"
+        animate={{ background: `radial-gradient(ellipse at 50% 45%, ${env.paper}33 0%, transparent 60%)` }} transition={{ duration: 0.4 }} />
+
+      <button onClick={onClose} aria-label="close"
+        className="fixed right-4 top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-white/90 text-ink shadow-item backdrop-blur transition-transform duration-200 hover:scale-105 active:scale-95">
+        <X className="h-5 w-5" />
+      </button>
+
+      <div className="relative flex min-h-full items-center justify-center px-5 pb-24 pt-12">
+        <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl">
+          <AnimatePresence mode="wait" initial={false} custom={dir}>
+            <motion.div key={letter.id} custom={dir} variants={slide} initial="enter" animate="center" exit="exit">
+              <LetterStage letter={letter} env={env} origin={dir === 0 ? origin : undefined} onRead={onRead} />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {nav && nav.total > 1 && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-20 flex justify-center px-4">
+          <div onClick={(e) => e.stopPropagation()} className="pointer-events-auto flex items-center gap-1 rounded-full bg-white/90 p-1.5 shadow-lg backdrop-blur">
+            <button type="button" aria-label="previous letter" disabled={!nav.onPrev} onClick={nav.onPrev}
+              className="grid h-11 w-11 place-items-center rounded-full text-ink transition-colors hover:bg-black/5 disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <span className="min-w-[5.5rem] text-center font-typewriter text-sm tabular-nums text-ink/80" aria-live="polite">
+              {nav.index + 1} of {nav.total}
+            </span>
+            <button type="button" aria-label="next letter" disabled={!nav.onNext} onClick={nav.onNext}
+              className="grid h-11 w-11 place-items-center rounded-full text-ink transition-colors hover:bg-black/5 disabled:cursor-default disabled:opacity-25 disabled:hover:bg-transparent">
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/** One letter: its sealed envelope, the opening sequence, then the letter itself. */
+function LetterStage({ letter, env, origin, onRead }: { letter: Letter; env: EnvelopeColor; origin?: DOMRect; onRead?: (id: string) => void }) {
+  // tapped on the board: zoom out of that envelope; arrived via next/previous: just slide in
+  const [start] = useState(() => (origin ? { ...fromOrigin(origin), rotate: letter.rotation, opacity: 0.5 } : { x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }));
+  const [stage, setStage] = useState<Stage>("sealed");
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
       if ((e.key === "Enter" || e.key === " ") && stage === "sealed") { e.preventDefault(); open(); }
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   });
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => { if (stage === "open") onRead?.(letter.id); }, [stage, letter.id, onRead]);
 
   const open = () => {
     if (stage !== "sealed") return;
@@ -60,53 +142,32 @@ export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin
   const flapOpen = stage === "flap" || stage === "rise";
 
   return (
-    <motion.div
-      className="fixed inset-0 z-50 overflow-y-auto"
-      initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }}
-      onClick={onClose}
-      role="dialog" aria-modal="true" aria-label={`letter from ${letter.from_name}`}
-      ref={dialog} tabIndex={-1}
-    >
-      {/* soft, warm backdrop instead of a flat dark wash */}
-      <div className="fixed inset-0 bg-[#1c140e]/55 backdrop-blur-md" />
-      <div className="pointer-events-none fixed inset-0" style={{ background: `radial-gradient(ellipse at 50% 45%, ${env.paper}33 0%, transparent 60%)` }} />
-
-      <button onClick={onClose} aria-label="close"
-        className="fixed right-4 top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-white/90 text-ink shadow-item backdrop-blur transition-transform duration-200 hover:scale-105 active:scale-95">
-        <X className="h-5 w-5" />
-      </button>
-
-      <div className="relative flex min-h-full items-center justify-center px-5 py-12">
-        <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl">
-          <AnimatePresence mode="wait">
-            {stage !== "open" ? (
-              <motion.div
-                key="envelope"
-                initial={{ ...start, rotate: letter.rotation, opacity: 0.5 }}
-                animate={{ x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }}
-                exit={{ y: 140, opacity: 0, scale: 0.94, transition: { duration: 0.3, ease: ease.in } }}
-                transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
-                className="mx-auto"
-                style={{ width: "min(400px, 86vw, calc((100svh - 12rem) * 1.3))" }}
-              >
-                <Envelope env={env} stage={stage} flapOpen={flapOpen} from={letter.from_name} onOpen={open} />
-                <motion.p
-                  animate={{ opacity: stage === "sealed" ? 1 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="mt-6 text-center font-clean text-sm tracking-wide text-white/85"
-                >
-                  tap the seal to open
-                </motion.p>
-              </motion.div>
-            ) : (
-              <motion.div key="letter" className="relative mx-auto w-full">
-                <OpenedLetter letter={letter} env={env} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </motion.div>
+    <AnimatePresence mode="wait">
+      {stage !== "open" ? (
+        <motion.div
+          key="envelope"
+          initial={start}
+          animate={{ x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }}
+          exit={{ y: 140, opacity: 0, scale: 0.94, transition: { duration: 0.3, ease: ease.in } }}
+          transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
+          className="mx-auto"
+          style={{ width: "min(400px, 86vw, calc((100svh - 13rem) * 1.3))" }}
+        >
+          <Envelope env={env} stage={stage} flapOpen={flapOpen} from={letter.from_name} onOpen={open} />
+          <motion.p
+            animate={{ opacity: stage === "sealed" ? 1 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="mt-6 text-center font-clean text-sm tracking-wide text-white/85"
+          >
+            tap the seal to open
+          </motion.p>
+        </motion.div>
+      ) : (
+        <motion.div key="letter" className="relative mx-auto w-full">
+          <OpenedLetter letter={letter} env={env} />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -117,7 +178,7 @@ export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin
  * the inside (drawn), the letter, the front pocket, the flap and the push pin.
  * Coordinates are in the 1063×809 envelope photo.
  */
-const ENV = { w: 1063, h: 809, body: { x: 5, y: 101, w: 1041, h: 692 }, tip: { x: 522, y: 600 } };
+const ENV = ENVELOPE_GEOM;
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
 function Envelope({ env, stage, flapOpen, from, onOpen }: {
@@ -258,8 +319,8 @@ function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
     <motion.div
       className="relative mx-auto"
       // the page is 3:4, so size it by the window height: it fits without scrolling.
-      // 12rem = outer padding (6rem) + "from" label (~2.5rem) + the panel's padding (3.5rem)
-      style={canvas ? { width: "min(100%, calc((100svh - 12rem) * 0.75 + 3.5rem))" } : undefined}
+      // 15rem = outer padding (9rem, incl. room for the next/previous bar) + "from" label (~2.5rem) + panel padding (3.5rem)
+      style={canvas ? { width: "min(100%, calc((100svh - 15rem) * 0.75 + 3.5rem))" } : undefined}
       initial={{ y: 60, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ ...spring.soft, opacity: { duration: 0.2 } }}

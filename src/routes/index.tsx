@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion, useAnimate } from "framer-motion";
 import { Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,7 +62,20 @@ export const Route = createFileRoute("/")({
 function Room() {
   const [letters, setLetters] = useState<Letter[]>([]);
   const [newIds, setNewIds] = useState(() => new Set<string>());
-  const [open, setOpen] = useState<{ letter: Letter; rect: DOMRect } | null>(null);
+  const [open, setOpen] = useState<{ letter: Letter; rect?: DOMRect; dir: 0 | 1 | -1 } | null>(null);
+  // letters this viewer has opened (kept in this browser), so read envelopes look opened
+  const [read, setRead] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    try { setRead(new Set(JSON.parse(localStorage.getItem("alif-read") ?? "[]") as string[])); } catch { /* storage blocked */ }
+  }, []);
+  const markRead = useCallback((id: string) => {
+    setRead((r) => {
+      if (r.has(id)) return r;
+      const next = new Set(r).add(id);
+      try { localStorage.setItem("alif-read", JSON.stringify([...next])); } catch { /* storage blocked */ }
+      return next;
+    });
+  }, []);
   const [studio, setStudio] = useState(false);
   const [muted, setMuted] = useState(false);
   const mutedRef = useRef(false);
@@ -125,6 +138,21 @@ function Room() {
   };
 
   const { spots, height } = layoutBoard(letters);
+  // reading order = pinning order, the same order the board fills in
+  const ordered = [...letters].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
+  const openIndex = open ? ordered.findIndex((l) => l.id === open.letter.id) : -1;
+  const goTo = (i: number, dir: 1 | -1) => {
+    const target = ordered[i];
+    if (!target) return;
+    prefetchOpen(envelopeFor(target.id).name);
+    setOpen({ letter: target, dir });
+  };
+  // warm up the neighbours, so next/previous is instant
+  useEffect(() => {
+    if (openIndex < 0) return;
+    for (const n of [ordered[openIndex + 1], ordered[openIndex - 1]]) if (n) prefetchOpen(envelopeFor(n.id).name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openIndex]);
   const extended = height > 100;
 
   return (
@@ -176,7 +204,7 @@ function Room() {
                 {!intro && letters.map((l, i) => {
                   const spot = spots.get(l.id);
                   return spot ? (
-                    <BoardItem key={l.id} letter={l} spot={spot} boardHeight={height} index={i} isNew={newIds.has(l.id)} onPrefetch={() => prefetchOpen(envelopeFor(l.id).name)} onOpen={(rect) => setOpen({ letter: l, rect })} />
+                    <BoardItem key={l.id} letter={l} spot={spot} boardHeight={height} index={i} isNew={newIds.has(l.id)} onPrefetch={() => prefetchOpen(envelopeFor(l.id).name)} read={read.has(l.id)} onOpen={(rect) => setOpen({ letter: l, rect, dir: 0 })} />
                   ) : null;
                 })}
               </div>
@@ -210,7 +238,19 @@ function Room() {
       <AnimatePresence>
         {open && (
           <Suspense key="open" fallback={<Opening />}>
-            <LetterOpen letter={open.letter} origin={open.rect} onClose={() => setOpen(null)} />
+            <LetterOpen
+              letter={open.letter}
+              origin={open.rect}
+              onRead={markRead}
+              onClose={() => setOpen(null)}
+              nav={openIndex < 0 ? undefined : {
+                index: openIndex,
+                total: ordered.length,
+                dir: open.dir,
+                onPrev: openIndex > 0 ? () => goTo(openIndex - 1, -1) : undefined,
+                onNext: openIndex < ordered.length - 1 ? () => goTo(openIndex + 1, 1) : undefined,
+              }}
+            />
           </Suspense>
         )}
         {studio && (

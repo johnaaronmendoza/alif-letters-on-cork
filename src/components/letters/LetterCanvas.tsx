@@ -279,6 +279,10 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, maxLength, classNa
   className?: string; style?: CSSProperties;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const t = ref.current;
+    if (t) t.setSelectionRange(t.value.length, t.value.length);
+  }, []);
   useLayoutEffect(() => {
     const t = ref.current;
     if (!t) return;

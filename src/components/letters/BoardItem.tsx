@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
 import { PIN_ORIGIN, ease, spring } from "@/lib/motion";
-import { envelopeFor, isLocked, type BoardSpot, type Letter } from "@/lib/letters";
+import { ENVELOPE_GEOM, envelopeFor, isLocked, type BoardSpot, type EnvelopeColor, type Letter } from "@/lib/letters";
 import { isCanvasLetter, readCanvas } from "@/lib/canvas";
 import { useMedia } from "./LetterPaper";
 
@@ -23,7 +23,7 @@ export function Pin({ color }: { color: string }) {
 }
 
 export function BoardItem({
-  letter, spot, boardHeight, isNew, index, onOpen, onPrefetch,
+  letter, spot, boardHeight, isNew, index, read = false, onOpen, onPrefetch,
 }: {
   letter: Letter;
   spot: BoardSpot;
@@ -33,13 +33,16 @@ export function BoardItem({
   /** Position in load order, used for the entrance stagger. */
   index: number;
   onOpen: (rect: DOMRect) => void;
+  /** This viewer has opened it before: show it as an opened envelope. */
+  read?: boolean;
   /** Called on hover / focus / press, to warm up what opening needs. */
   onPrefetch?: () => void;
 }) {
   const photocard = isCanvasLetter(letter.stickers) && readCanvas(letter.stickers).photocard && !!letter.photo_url;
   const photo = useMedia(photocard ? letter.photo_url : null);
   const locked = isLocked(letter);
-  const env = envelopeFor(letter.id).name;
+  const envColor = envelopeFor(letter.id);
+  const env = envColor.name;
   const r = spot.r;
 
   return (
@@ -61,7 +64,7 @@ export function BoardItem({
         whileHover={{ y: -6, scale: 1.05, rotate: r * 0.4, transition: spring.soft }}
         whileTap={{ scale: 0.97, transition: spring.snappy }}
         className="relative block w-full cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cork"
-        aria-label={`${locked ? "locked " : ""}letter from ${letter.from_name}${photocard ? ", with a photocard" : ""}`}
+        aria-label={`${locked ? "locked " : ""}letter from ${letter.from_name}${photocard ? ", with a photocard" : ""}${read ? ", opened" : ""}`}
       >
           <div className="relative w-full" style={{ aspectRatio: "600 / 457", filter: "drop-shadow(0 3px 5px rgb(40 25 10 / .25))" }}>
             {/* a corner of the photocard peeking out from behind the envelope */}
@@ -72,7 +75,11 @@ export function BoardItem({
                 </span>
               </span>
             )}
-            <img src={`/board/envelopes/${env}.webp`} alt="" width={600} height={457} draggable={false} loading="lazy" className="relative block h-full w-full select-none" />
+            {read ? (
+              <OpenedEnvelope env={envColor} />
+            ) : (
+              <img src={`/board/envelopes/${env}.webp`} alt="" width={600} height={457} draggable={false} loading="lazy" className="relative block h-full w-full select-none" />
+            )}
             <span className="absolute inset-x-[16%] top-[56%] -translate-y-1/2 truncate text-center font-typewriter text-[clamp(8px,0.82vw,12px)] leading-tight text-ink">
               {letter.from_name}
             </span>
@@ -83,5 +90,30 @@ export function BoardItem({
         )}
       </motion.button>
     </div>
+  );
+}
+
+const pct = (v: number, of: number) => `${(v / of) * 100}%`;
+
+/** An envelope that has been read: flap folded up, the letter peeking out of the pocket. */
+function OpenedEnvelope({ env }: { env: EnvelopeColor }) {
+  const g = ENVELOPE_GEOM;
+  const layer = (part: "pocket" | "flap" | "pin") => `/board/envelopes/open/${env.name}-${part}.webp`;
+  const img = "absolute inset-0 block h-full w-full select-none";
+  return (
+    <span className="relative block h-full w-full">
+      {/* flap, folded up behind the envelope */}
+      <img src={layer("flap")} alt="" draggable={false} loading="lazy" className={img}
+        style={{ transform: "scaleY(-0.5)", transformOrigin: `50% ${pct(g.body.y, g.h)}`, filter: "brightness(.84)" }} />
+      {/* inside of the envelope */}
+      <span className="absolute block rounded-[2px]"
+        style={{ left: pct(g.body.x, g.w), top: pct(g.body.y, g.h), width: pct(g.body.w, g.w), height: pct(g.body.h, g.h), background: `linear-gradient(180deg, ${env.inside}, ${env.shade})` }} />
+      {/* the letter, peeking out */}
+      <span className="absolute block shadow-[0_1px_2px_rgb(0_0_0/.15)]"
+        style={{ left: "14%", width: "72%", top: "18%", height: "48%", backgroundColor: "#f8f3e7",
+          backgroundImage: "repeating-linear-gradient(transparent 0 11%, rgb(90 120 170 / .14) 11% calc(11% + 1px))" }} />
+      <img src={layer("pocket")} alt="" draggable={false} loading="lazy" className={img} />
+      <img src={layer("pin")} alt="" draggable={false} loading="lazy" className={img} />
+    </span>
   );
 }
