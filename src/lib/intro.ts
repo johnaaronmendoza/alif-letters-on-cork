@@ -2,11 +2,13 @@
  * Intro sequence: the collage, cut into its pieces. Each piece is an image in
  * /public/board/intro/<name>.webp; x / y / w / h are % of the collage, and the
  * list is in stacking order (bottom first), which is also the order they slap on.
- * The title is last; empty.webp is the bare cork they land on.
+ * The tyre tracks sit at the bottom of the stack but skid in with the Arsenal
+ * badge; the title is last. empty.webp is the bare cork they land on.
  */
 export type IntroPiece = { name: string; x: number; y: number; w: number; h: number };
 
 export const INTRO_PIECES: IntroPiece[] = [
+  { name: "tracks", x: 30.625, y: 55.521, w: 37.083, h: 44.479 },
   { name: "strip-left", x: 0.167, y: 53.282, w: 10.0, h: 46.409 },
   { name: "strip-right", x: 6.542, y: 54.749, w: 9.333, h: 44.942 },
   { name: "secret", x: 1.333, y: 33.9, w: 20.292, h: 23.629 },

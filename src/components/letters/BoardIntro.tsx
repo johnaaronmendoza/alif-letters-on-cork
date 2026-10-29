@@ -14,8 +14,11 @@ const TITLE_GAP = 0.25;     // pause before the title
 const HOLD = 0.55;          // hold the finished collage before handing over
 const LOAD_TIMEOUT = 2500;  // give up and skip if the images are this slow
 
-const pieces = INTRO_PIECES.filter((p) => p.name !== "title");
+const pieces = INTRO_PIECES.filter((p) => p.name !== "title" && p.name !== "tracks");
 const title = INTRO_PIECES.find((p) => p.name === "title");
+const tracks = INTRO_PIECES.find((p) => p.name === "tracks");
+/** The tyre tracks skid in at the same moment the Arsenal badge lands. */
+const TRACKS_AT = FIRST + Math.max(0, pieces.findIndex((p) => p.name === "arsenal")) * STEP;
 const zOf = (name: string) => INTRO_PIECES.findIndex((p) => p.name === name) + 1;
 const src = (name: string) => `/board/intro/${name}.webp`;
 
@@ -83,6 +86,17 @@ export function BoardIntro({ onStamp, onDone }: { onStamp: () => void; onDone: (
             {ready && (
               <>
                 <img src={src("empty")} alt="" className="absolute inset-0 h-full w-full" draggable={false} />
+                {tracks && (
+                  <motion.img
+                    src={src("tracks")} alt="" draggable={false}
+                    className="absolute select-none"
+                    style={{ left: `${tracks.x}%`, top: `${tracks.y}%`, width: `${tracks.w}%`, zIndex: zOf("tracks") }}
+                    // a quick skid: the stain wipes on from the left, along the direction of travel
+                    initial={{ clipPath: "inset(0% 100% 0% 0%)", opacity: 0.6 }}
+                    animate={{ clipPath: "inset(0% 0% 0% 0%)", opacity: 1 }}
+                    transition={{ delay: TRACKS_AT - 0.05, duration: 0.38, ease: [0.3, 0.7, 0.4, 1] }}
+                  />
+                )}
                 {pieces.map((p, i) => (
                   <Piece key={p.name} name={p.name} box={p} delay={FIRST + i * STEP} />
                 ))}
