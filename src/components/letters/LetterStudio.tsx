@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useDialogFocus } from "@/lib/focus";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowLeft, Check, ChevronLeft, CirclePlus, ChevronRight, Copy, Eye, EyeOff, ImageIcon, Layers, Link2, Maximize, Mic, Minus, Pencil,
+  ArrowLeft, Check, ChevronLeft, CirclePlus, Pin, ChevronRight, Copy, Eye, EyeOff, ImageIcon, Layers, Link2, Maximize, Mic, Minus, Pencil,
   Plus, Redo2, Square, Trash2, Type, Undo2, Upload, Video, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -45,7 +45,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   const [, bump] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [bg, setBg] = useState<string>("peach");
+  const [bg, setBg] = useState<string>("cork");
   const [paper, setPaper] = useState<PaperId>("lined");
   const [photocard, setPhotocard] = useState(false);
   const [cardSrc, setCardSrc] = useState<string | null>(null);
@@ -271,10 +271,10 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
         initial={{ opacity: 0, y: 40, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1, transition: { ...spring.soft, opacity: { duration: 0.2 } } }}
         exit={{ opacity: 0, y: 24, scale: 0.97, transition: fadeOut }}
-        className="flex h-full w-full flex-col overflow-hidden bg-[#f4f2ef] font-clean text-ink shadow-paper sm:rounded-xl"
+        className="studio-paper flex h-full w-full flex-col overflow-hidden font-clean text-ink shadow-paper sm:rounded-xl"
       >
         {/* top bar */}
-        <header className="flex items-center gap-2 border-b border-black/10 px-3 py-2 sm:px-5 sm:py-3">
+        <header className="flex items-center gap-2 border-b-2 border-dashed border-[#8a6a45]/25 px-3 py-2 sm:px-5 sm:py-3">
           <IconBtn label="back" onClick={requestClose}><ArrowLeft className="h-5 w-5" /></IconBtn>
           <div className="min-w-0 flex-1">
             {/* who the letter is from: signed on a dashed line, like a form */}
@@ -314,8 +314,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
           </IconBtn>
           <button
             onClick={publish} disabled={busy}
-            className="ml-1 min-h-11 rounded-lg bg-[#4a4541] px-4 text-sm font-medium tracking-wider text-white transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 disabled:cursor-wait disabled:opacity-60 sm:px-6"
+            className="ml-1 flex min-h-11 -rotate-1 items-center gap-2 rounded-[4px] bg-[#8a1c24] px-4 font-typewriter text-sm tracking-[0.18em] text-[#fbf3e6] shadow-[inset_0_0_0_2px_rgb(251_243_230/.35),0_3px_8px_-2px_rgb(90_10_15/.5)] transition-transform duration-200 hover:-translate-y-0.5 hover:rotate-0 active:translate-y-0 active:scale-95 disabled:cursor-wait disabled:opacity-60 sm:px-6"
           >
+            <Pin className="h-4 w-4" aria-hidden />
             {busy ? "PINNING…" : "PIN IT"}
           </button>
         </header>
@@ -323,7 +324,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
         <div className="flex min-h-0 flex-1 flex-col-reverse lg:flex-row">
           {/* sidebar */}
           {!preview && (
-            <aside className="max-h-[42vh] shrink-0 overflow-y-auto border-t border-black/10 p-4 lg:max-h-none lg:w-[300px] lg:border-r lg:border-t-0 lg:p-6">
+            <aside className="studio-kraft max-h-[42vh] shrink-0 overflow-y-auto border-t-2 border-dashed border-[#8a6a45]/30 p-4 lg:max-h-none lg:w-[300px] lg:border-r-2 lg:border-t-0 lg:p-6">
               <Section title="elements">
                 <div className="grid grid-cols-2 gap-2.5">
                   <Tile icon={<Type className="h-5 w-5" />} label="text" onClick={addText} />
@@ -360,7 +361,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
 
               <Section title="photocard" action={
                 <button role="switch" aria-checked={photocard} aria-label="include a photocard" onClick={() => setPhotocard(!photocard)}
-                  className={`grid h-7 w-7 place-items-center rounded-md border transition-colors duration-200 ${photocard ? "border-[#4a4541] bg-[#4a4541] text-white" : "border-black/20 bg-white"}`}>
+                  className={`grid h-7 w-7 place-items-center rounded-md border transition-colors duration-200 ${photocard ? "border-[#8a1c24] bg-[#8a1c24] text-white" : "border-black/20 bg-white"}`}>
                   {photocard && <Check className="h-4 w-4" />}
                 </button>
               }>
@@ -403,11 +404,11 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                 <div className="grid grid-cols-5 gap-2.5">
                   {BACKGROUNDS.map((b) => (
                     <button key={b.id} onClick={() => setBg(b.id)} aria-label={`${b.label} background`} aria-pressed={bg === b.id}
-                      className={`aspect-square rounded-full shadow-sm transition-transform duration-200 hover:scale-105 ${bg === b.id ? "ring-2 ring-ink ring-offset-2 ring-offset-[#f4f2ef]" : ""}`}
+                      className={`aspect-square rounded-[4px] shadow-[0_1px_3px_rgb(60_40_20/.3)] transition-transform duration-200 hover:scale-105 ${bg === b.id ? "ring-2 ring-ink ring-offset-2 ring-offset-[#e3d3b5]" : ""}`}
                       style={{ background: b.css }} />
                   ))}
                   <button onClick={() => colorInput.current?.click()} aria-label="custom background color"
-                    className={`grid aspect-square place-items-center rounded-full border border-dashed border-black/30 text-ink/50 transition-transform duration-200 hover:scale-105 ${bg.startsWith("#") ? "ring-2 ring-ink ring-offset-2 ring-offset-[#f4f2ef]" : ""}`}
+                    className={`grid aspect-square place-items-center rounded-[4px] border border-dashed border-black/30 text-ink/50 transition-transform duration-200 hover:scale-105 ${bg.startsWith("#") ? "ring-2 ring-ink ring-offset-2 ring-offset-[#e3d3b5]" : ""}`}
                     style={bg.startsWith("#") ? { background: bg } : undefined}>
                     {!bg.startsWith("#") && <Plus className="h-4 w-4" />}
                   </button>
@@ -479,7 +480,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
               </div>
             </div>
             </div>
-            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-2xl bg-white/90 p-1.5 shadow-lg backdrop-blur">
+            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-xl paper-card p-1.5">
               <IconBtn label="zoom out" small disabled={zoom <= 0.6} onClick={() => setZoom(Math.max(0.6, +(zoom - 0.2).toFixed(1)))}><Minus className="h-4 w-4" /></IconBtn>
               <span className="w-10 text-center text-xs tabular-nums text-ink/60">{Math.round(zoom * 100)}%</span>
               <IconBtn label="zoom in" small disabled={zoom >= 1.6} onClick={() => setZoom(Math.min(1.6, +(zoom + 0.2).toFixed(1)))}><Plus className="h-4 w-4" /></IconBtn>
@@ -537,7 +538,7 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
   return (
     <section className="mb-7 last:mb-0">
       <div className="mb-3 flex min-h-8 items-center justify-between">
-        <h3 className="font-typewriter text-sm uppercase tracking-[0.12em] text-ink/70">{title}</h3>
+        <h3 className="tape-label inline-block -rotate-1 px-3 py-1 font-typewriter text-sm uppercase tracking-[0.12em] text-ink/85">{title}</h3>
         {action}
       </div>
       {children}
@@ -548,7 +549,7 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
 function Tile({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border border-black/10 bg-[#f7f5f2] text-ink/70 transition duration-200 hover:-translate-y-0.5 hover:border-black/20 hover:bg-white hover:text-ink active:translate-y-0 active:scale-[0.98]">
+      className="paper-card flex min-h-20 flex-col items-center justify-center gap-2 rounded-[3px] text-ink/75 transition duration-200 odd:-rotate-[0.8deg] even:rotate-[0.6deg] hover:-translate-y-0.5 hover:rotate-0 hover:text-ink active:translate-y-0 active:scale-[0.98]">
       {icon}
       <span className="font-typewriter text-xs uppercase tracking-[0.12em]">{label}</span>
     </button>
@@ -586,7 +587,7 @@ function Toolbar({ el, palette, setPalette, onPatch, onEdit, onFront, onBack, on
     <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center px-3">
     <motion.div
       initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy}
-      className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-2xl border border-black/5 bg-white p-1.5 shadow-lg"
+      className="paper-card pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-xl p-1.5"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {isText && (
@@ -713,7 +714,7 @@ function AddDialog({ dialog, current, onClose, onLink, onVideo, onAudio }: {
       <motion.div
         onClick={(e) => e.stopPropagation()}
         initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.soft }} exit={{ opacity: 0, y: 8, transition: fadeOut }}
-        className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-paper"
+        className="paper-card w-full max-w-sm rounded-md p-5"
         role="dialog" aria-modal="true" aria-label={title}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -758,7 +759,7 @@ function AddDialog({ dialog, current, onClose, onLink, onVideo, onAudio }: {
                   className="min-h-11 rounded-lg border border-black/15 px-3 outline-none focus:border-ink" />
               </label>
             )}
-            <button type="submit" className="mt-1 min-h-11 rounded-lg bg-[#4a4541] text-sm font-medium tracking-wider text-white transition-transform active:scale-95">
+            <button type="submit" className="mt-1 min-h-11 rounded-lg bg-[#8a1c24] text-sm font-medium tracking-wider text-white transition-transform active:scale-95">
               {current ? "SAVE" : "ADD"}
             </button>
           </form>

@@ -45,23 +45,41 @@ export const PAPERS = [
 export type PaperId = (typeof PAPERS)[number]["id"];
 const isPaper = (v: unknown): v is PaperId => PAPERS.some((p) => p.id === v);
 
+/** Fractal-noise texture as a CSS url(), tinted rgb (0–1) at the given alpha. */
+const noise = (freq: string, octaves: number, [r, g, b]: [number, number, number], alpha: number, size = 220) =>
+  `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='${freq}' numOctaves='${octaves}' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${b} 0 0 0 ${alpha} 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / ${size}px ${size}px`;
+
+/** Backgrounds behind the letter: textures from Alif's world, to match the board. */
 export const BACKGROUNDS = [
-  { id: "peach", label: "peach haze", css: "radial-gradient(circle at 25% 35%, #f3c6a3 0%, #e7d2c0 38%, #b5c3d6 78%, #9fb3cf 100%)" },
-  { id: "sunset", label: "sunset", css: "linear-gradient(165deg, #7fa3dc 0%, #c9b3d6 35%, #f2a7a0 62%, #f6d6a6 100%)" },
-  { id: "linen", label: "linen", css: "repeating-linear-gradient(0deg, rgb(120 100 70 / .05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(120 100 70 / .05) 0 1px, transparent 1px 3px), #efe8dc" },
-  { id: "grid", label: "green grid", css: "linear-gradient(rgb(110 130 60 / .22) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(90deg, rgb(110 130 60 / .22) 1px, transparent 1px) 0 0 / 14px 14px, #e8ecd6" },
-  { id: "lined", label: "lined", css: "repeating-linear-gradient(transparent 0 23px, rgb(90 120 170 / .25) 23px 24px), #f8f5ef" },
-  { id: "crumpled", label: "crumpled", css: "radial-gradient(ellipse at 20% 30%, rgb(255 255 255 / .7), transparent 40%), radial-gradient(ellipse at 75% 65%, rgb(160 150 130 / .25), transparent 45%), radial-gradient(ellipse at 60% 15%, rgb(150 140 120 / .2), transparent 35%), #e9e4da" },
-  { id: "sage", label: "sage", css: "radial-gradient(rgb(255 255 255 / .35) 1.2px, transparent 1.6px) 0 0 / 16px 16px, radial-gradient(rgb(60 70 30 / .25) 1px, transparent 1.5px) 8px 8px / 16px 16px, #8fa267" },
-  { id: "meadow", label: "meadow", css: "linear-gradient(180deg, #a8bfd0 0%, #c8d3cf 30%, #6f8a4a 31%, #4d6b33 60%, #2f4524 100%)" },
-  { id: "sky", label: "sky", css: "linear-gradient(180deg, #6f9bd3 0%, #a9c3e3 45%, #e9d6c6 78%, #f1b98f 100%)" },
-  { id: "night", label: "night", css: "radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 20%, #fff, transparent), radial-gradient(1.5px 1.5px at 40% 70%, #fff, transparent), radial-gradient(1px 1px at 85% 60%, #fff, transparent), radial-gradient(1px 1px at 55% 45%, rgb(255 255 255 / .7), transparent), radial-gradient(ellipse at 50% 120%, #2c3a6b, #141b36 70%)" },
+  { id: "cork", label: "cork board", css: `url("/board/cork-tile.webp") 0 0 / 240px auto repeat, #a87a4f` },
+  { id: "kraft", label: "kraft paper", css: `${noise(".012 .5", 2, [0.25, 0.16, 0.06], 0.28)}, ${noise(".9", 3, [0.3, 0.2, 0.1], 0.18)}, #c9a679` },
+  { id: "desk", label: "wooden desk", css: `repeating-linear-gradient(0deg, transparent 0 158px, rgb(40 20 8 / .35) 158px 160px), ${noise(".004 .22", 3, [0.22, 0.11, 0.04], 0.5, 300)}, linear-gradient(180deg, #91603a, #7d5131)` },
+  { id: "denim", label: "denim", css: `repeating-linear-gradient(45deg, rgb(255 255 255 / .07) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgb(0 0 0 / .14) 0 1px, transparent 1px 3px), ${noise(".7", 3, [0.85, 0.9, 1], 0.12)}, #3b5579` },
+  { id: "tartan", label: "punk tartan", css: `repeating-linear-gradient(0deg, transparent 0 18px, rgb(0 0 0 / .42) 18px 32px, transparent 32px 50px, rgb(255 214 90 / .3) 50px 52px), repeating-linear-gradient(90deg, transparent 0 18px, rgb(0 0 0 / .42) 18px 32px, transparent 32px 50px, rgb(255 214 90 / .3) 50px 52px), ${noise(".8", 2, [0, 0, 0], 0.18)}, #a51d24` },
+  { id: "gig", label: "gig night", css: `radial-gradient(ellipse at 50% -10%, rgb(255 236 200 / .22), transparent 55%), ${noise(".9", 3, [1, 1, 1], 0.07)}, #171515` },
+  { id: "arsenal", label: "arsenal red", css: `radial-gradient(ellipse at 50% 40%, rgb(255 255 255 / .1), transparent 65%), ${noise(".85", 3, [0.2, 0, 0], 0.22)}, #c4161c` },
+  { id: "concrete", label: "concrete", css: `radial-gradient(circle at 20% 30%, rgb(0 0 0 / .08), transparent 25%), radial-gradient(circle at 75% 70%, rgb(0 0 0 / .07), transparent 30%), ${noise(".55", 4, [0.2, 0.2, 0.2], 0.35)}, #a3a19c` },
+  { id: "newsprint", label: "newsprint", css: `radial-gradient(circle, rgb(40 40 40 / .16) 0.8px, transparent 1.2px) 0 0 / 5px 5px, repeating-linear-gradient(90deg, transparent 0 180px, rgb(40 40 40 / .12) 180px 181px), ${noise(".9", 2, [0.3, 0.3, 0.25], 0.12)}, #e8e3d6` },
 ] as const;
 export type BackgroundId = (typeof BACKGROUNDS)[number]["id"];
 
+/** Backgrounds from the first version, no longer offered but kept for letters that use them. */
+const LEGACY_BACKGROUNDS: Record<string, string> = {
+  peach: "radial-gradient(circle at 25% 35%, #f3c6a3 0%, #e7d2c0 38%, #b5c3d6 78%, #9fb3cf 100%)",
+  sunset: "linear-gradient(165deg, #7fa3dc 0%, #c9b3d6 35%, #f2a7a0 62%, #f6d6a6 100%)",
+  linen: "repeating-linear-gradient(0deg, rgb(120 100 70 / .05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(120 100 70 / .05) 0 1px, transparent 1px 3px), #efe8dc",
+  grid: "linear-gradient(rgb(110 130 60 / .22) 1px, transparent 1px) 0 0 / 14px 14px, linear-gradient(90deg, rgb(110 130 60 / .22) 1px, transparent 1px) 0 0 / 14px 14px, #e8ecd6",
+  lined: "repeating-linear-gradient(transparent 0 23px, rgb(90 120 170 / .25) 23px 24px), #f8f5ef",
+  crumpled: "radial-gradient(ellipse at 20% 30%, rgb(255 255 255 / .7), transparent 40%), radial-gradient(ellipse at 75% 65%, rgb(160 150 130 / .25), transparent 45%), radial-gradient(ellipse at 60% 15%, rgb(150 140 120 / .2), transparent 35%), #e9e4da",
+  sage: "radial-gradient(rgb(255 255 255 / .35) 1.2px, transparent 1.6px) 0 0 / 16px 16px, radial-gradient(rgb(60 70 30 / .25) 1px, transparent 1.5px) 8px 8px / 16px 16px, #8fa267",
+  meadow: "linear-gradient(180deg, #a8bfd0 0%, #c8d3cf 30%, #6f8a4a 31%, #4d6b33 60%, #2f4524 100%)",
+  sky: "linear-gradient(180deg, #6f9bd3 0%, #a9c3e3 45%, #e9d6c6 78%, #f1b98f 100%)",
+  night: "radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 20%, #fff, transparent), radial-gradient(1.5px 1.5px at 40% 70%, #fff, transparent), radial-gradient(1px 1px at 85% 60%, #fff, transparent), radial-gradient(1px 1px at 55% 45%, rgb(255 255 255 / .7), transparent), radial-gradient(ellipse at 50% 120%, #2c3a6b, #141b36 70%)",
+};
+
 export function backgroundCss(id: string) {
   if (/^#[0-9a-f]{6}$/i.test(id)) return id; // custom color from the "+" swatch
-  return BACKGROUNDS.find((b) => b.id === id)?.css ?? BACKGROUNDS[0].css;
+  return BACKGROUNDS.find((b) => b.id === id)?.css ?? LEGACY_BACKGROUNDS[id] ?? BACKGROUNDS[0].css;
 }
 
 /**
