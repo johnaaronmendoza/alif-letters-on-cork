@@ -3,10 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { GRID_ROWS, MIN_ROWS, boardRows, playThunk, type Letter } from "@/lib/letters";
+import { ART_ASPECT, layoutBoard, playThunk, type Letter } from "@/lib/letters";
 import { ease, spring } from "@/lib/motion";
 import { FIGURES } from "@/lib/figures";
-import { BoardItem, Pin } from "@/components/letters/BoardItem";
+import { BoardItem } from "@/components/letters/BoardItem";
 import { LetterOpen } from "@/components/letters/LetterOpen";
 import { LetterStudio } from "@/components/letters/LetterStudio";
 
@@ -67,8 +67,8 @@ function Room() {
     setTimeout(() => document.getElementById(`letter-${l.id}`)?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }), 100);
   };
 
-  const rows = boardRows(letters);
-  const pages = rows / GRID_ROWS;
+  const { spots, height } = layoutBoard(letters);
+  const extended = height > 100;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -100,8 +100,9 @@ function Room() {
         <div className="overflow-x-auto px-4 pb-4 sm:px-0">
           <div className="relative mx-auto w-[900px] max-w-none sm:w-[80%] sm:min-w-[640px]">
             <div className="frame rounded-md p-[2.2%]">
-              <div className="cork-photo relative w-full overflow-hidden rounded-sm">
-                {/* Alif's collage is the top of the board; letters pin onto the cork below it. */}
+              <div className="cork-photo relative w-full overflow-hidden rounded-sm" style={{ aspectRatio: `${ART_ASPECT} / ${height / 100}` }}>
+                {/* Alif's collage is the board; letters pin into the open cork around it,
+                    and the cork carries on below once those spots are full. */}
                 <img
                   src="/board/base.webp"
                   alt="Alif's byebye collage: photos of Alif, a photo booth strip, a pig keychain, rock and Arsenal stickers"
@@ -109,26 +110,15 @@ function Room() {
                   height={1295}
                   fetchPriority="high"
                   draggable={false}
-                  className="relative block h-auto w-full select-none"
-                  style={{ maskImage: "linear-gradient(to bottom, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 95%, transparent)" }}
+                  className="pointer-events-none absolute left-0 top-0 block h-auto w-full select-none"
+                  style={extended ? { maskImage: "linear-gradient(to bottom, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 95%, transparent)" } : undefined}
                 />
-                <div className="relative w-full" style={{ aspectRatio: `16 / ${10 * pages}` }}>
-                {/* decorative pins + sticky note — only while the board is still mostly empty */}
-                {letters.length < 6 && rows === MIN_ROWS && (
-                  <>
-                    <span className="absolute left-[30%] top-[8%]"><Pin color="#9CC9E8" /></span>
-                    <span className="absolute left-[64%] top-[86%]"><Pin color="#F6E27A" /></span>
-                    <span className="absolute left-[88%] top-[12%]"><Pin color="#D7263D" /></span>
-                    <div className="absolute left-[42%] top-[38%] w-[16%] min-w-[110px] rotate-3 bg-butter p-3 font-hand text-lg leading-tight text-ink shadow-item">
-                      <span className="absolute -top-2 left-1/2 h-4 w-3/5 -translate-x-1/2 -rotate-2 bg-tape opacity-80" />
-                      pin something for alif :)
-                    </div>
-                  </>
-                )}
-                {letters.map((l, i) => (
-                  <BoardItem key={l.id} letter={l} index={i} pages={pages} isNew={newIds.has(l.id)} onOpen={(rect) => setOpen({ letter: l, rect })} />
-                ))}
-              </div>
+                {letters.map((l, i) => {
+                  const spot = spots.get(l.id);
+                  return spot ? (
+                    <BoardItem key={l.id} letter={l} spot={spot} boardHeight={height} index={i} isNew={newIds.has(l.id)} onOpen={(rect) => setOpen({ letter: l, rect })} />
+                  ) : null;
+                })}
               </div>
             </div>
           </div>

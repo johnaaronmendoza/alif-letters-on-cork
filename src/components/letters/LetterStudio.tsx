@@ -7,7 +7,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { PIN_COLORS, getBrowserId, pickBoardSpot, uploadMedia, type Letter } from "@/lib/letters";
+import { PIN_COLORS, getBrowserId, newBoardMeta, uploadMedia, type Letter } from "@/lib/letters";
 import {
   BACKGROUNDS, CANVAS_FONTS, STICKER_PAGES, STICKER_SHAPE, TEXT_BGS, TEXT_COLORS, backgroundCss, heightFor, parseVideo,
   plainText, safeUrl, uid, type CanvasEl, type ElementKind, type StickerName,
@@ -199,7 +199,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
           ?? (stored.find((e) => e.kind === "sticker" && e.photo) as { photo?: string } | undefined)?.photo
           ?? null
         : null;
-      const spot = pickBoardSpot(letters);
+      const spot = newBoardMeta();
       const { data, error } = await supabase.from("letters").insert({
         from_name: from.trim().slice(0, 60) || "anonymous",
         open_when_label: "",

@@ -55,49 +55,66 @@ export function getBrowserId() {
 }
 
 /**
- * Board layout. Letters pin onto the cork below the collage artwork. That area is
- * GRID_COLS wide and grows downward one row at a time, starting at MIN_ROWS.
- * board_x is % of board width; board_y is % of ONE base page (16:10, GRID_ROWS rows),
- * so values above 100 mean the letter sits on an added row further down.
+ * Board layout. Alif's collage is the board; letters pin into the open cork
+ * around the artwork (ART_SLOTS, copied from the mockup), in pinning order.
+ * Past those, the cork extends below the collage in rows of EXT_COLS.
+ * Positions are computed here rather than read from the database, so every
+ * viewer sees the same layout and gaps left by deleted letters fill in.
+ * x is % of board width; y is % of the collage's height (over 100 = below it).
  */
-export const GRID_COLS = 7;
-export const GRID_ROWS = 4;
-export const ROW_H = 100 / GRID_ROWS;
-/** The cork under the collage starts this many rows tall, then grows. */
-export const MIN_ROWS = 2;
+export const ART_ASPECT = 3648 / 1968;
+const ART_FRAME = { x: 50, y: 50, w: 1900, h: 1025 }; // mockup px (2000×1125) → cropped collage
+const MOCKUP: [number, number, number][] = [
+  // [centre x, centre y, rotation] in mockup pixels, in the order they fill
+  [200, 170, -3], [1660, 160, 3], [757, 160, 1], [1430, 942, -2], [480, 940, 2], [1487, 390, -1], [533, 378, 2],
+  [1780, 932, 3], [455, 195, -2], [1362, 180, 2], [757, 940, -1], [1778, 335, 2], [1172, 903, -3], [668, 743, -2],
+];
+export const ART_SLOTS = MOCKUP.map(([cx, cy, r]) => ({
+  x: ((cx - ART_FRAME.x) / ART_FRAME.w) * 100,
+  y: ((cy - ART_FRAME.y) / ART_FRAME.h) * 100,
+  r,
+}));
+export const EXT_COLS = 7;
+/** Height of one extension row, in % of the collage height. */
+export const EXT_ROW = 24;
+const EXT_PAD = 4;
 
-/** Rows the board needs to show every letter (never fewer than one base page). */
-export function boardRows(ls: { board_y: number }[]) {
-  const lastRow = ls.reduce((m, l) => Math.max(m, Math.floor(l.board_y / ROW_H)), 0);
-  return Math.max(MIN_ROWS, lastRow + 1);
+/** Small stable number in [-1, 1) from a letter id, for natural-looking jitter. */
+export function jitter(id: string, salt = 0) {
+  let h = 2166136261 ^ salt;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  return ((h >>> 0) % 2000) / 1000 - 1;
 }
 
-/** Picks the top-most free slot; adds a new row only when every slot is taken. */
-export function pickBoardSpot(existing: { board_x: number; board_y: number }[]) {
-  const minDist = (s: { x: number; y: number }) =>
-    existing.reduce((m, e) => Math.min(m, Math.hypot(e.board_x - s.x, (e.board_y - s.y) * 0.625)), Infinity);
-  const startRows = boardRows(existing);
-  for (let rows = startRows; rows < startRows + 200; rows++) {
-    const free: { x: number; y: number; r: number }[] = [];
-    for (let r = 0; r < rows; r++)
-      for (let c = 0; c < GRID_COLS; c++) {
-        const slot = { x: ((c + 0.5) / GRID_COLS) * 100, y: (r + 0.5) * ROW_H, r };
-        if (minDist(slot) > 7) free.push(slot);
-      }
-    if (!free.length) continue;
-    const topRow = Math.min(...free.map((f) => f.r));
-    const row = free.filter((f) => f.r === topRow);
-    const slot = row[Math.floor(Math.random() * row.length)]!;
-    const jx = (100 / GRID_COLS) * 0.18;
-    return {
-      board_x: clamp(slot.x + (Math.random() * 2 - 1) * jx, 6, 94),
-      board_y: clamp(slot.y + (Math.random() * 2 - 1) * 3, slot.r * ROW_H + 9, (slot.r + 1) * ROW_H - 9),
-      rotation: Math.round((Math.random() * 12 - 6) * 10) / 10,
-    };
-  }
-  return { board_x: 50, board_y: startRows * ROW_H + ROW_H / 2, rotation: 0 };
+export type BoardSpot = { x: number; y: number; r: number };
+
+/** Places letters (oldest first) and returns the board height in % of the collage height. */
+export function layoutBoard(ls: Pick<Letter, "id" | "created_at">[]) {
+  const ordered = [...ls].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
+  const spots = new Map<string, BoardSpot>();
+  ordered.forEach((l, i) => {
+    const slot = ART_SLOTS[i];
+    if (slot) {
+      spots.set(l.id, { x: slot.x, y: slot.y, r: slot.r + jitter(l.id, 1) });
+      return;
+    }
+    const k = i - ART_SLOTS.length;
+    const row = Math.floor(k / EXT_COLS), col = k % EXT_COLS;
+    spots.set(l.id, {
+      x: ((col + 0.5) / EXT_COLS) * 100 + jitter(l.id, 2) * 2,
+      y: 100 + EXT_PAD + (row + 0.5) * EXT_ROW + jitter(l.id, 3) * 2,
+      r: jitter(l.id, 4) * 4,
+    });
+  });
+  const extra = Math.max(0, ordered.length - ART_SLOTS.length);
+  const height = extra ? 100 + EXT_PAD + Math.ceil(extra / EXT_COLS) * EXT_ROW + 2 : 100;
+  return { spots, height };
 }
-const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+
+/** Values stored with a new letter; the board layout itself is computed by layoutBoard. */
+export function newBoardMeta() {
+  return { board_x: 50, board_y: 50, rotation: Math.round((Math.random() * 6 - 3) * 10) / 10 };
+}
 
 /** Media are stored as "bucket/path" in private buckets; resolve via signed URL. */
 const urlCache = new Map<string, string>();
