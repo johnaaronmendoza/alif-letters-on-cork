@@ -12,7 +12,7 @@ export type ImageEl = ElementBase & { kind: "image"; src: string };
 export type AudioEl = ElementBase & { kind: "audio"; src: string; name: string };
 export type VideoEl = ElementBase & { kind: "video"; url: string };
 export type StickerEl = ElementBase & { kind: "sticker"; name: StickerName; photo?: string | null };
-export type MetaEl = { kind: "meta"; photocard: boolean };
+export type MetaEl = { kind: "meta"; photocard: boolean; paper?: PaperId };
 
 export type CanvasEl = TextEl | LinkEl | ImageEl | AudioEl | VideoEl | StickerEl;
 export type ElementKind = CanvasEl["kind"];
@@ -29,6 +29,21 @@ export type FontId = (typeof CANVAS_FONTS)[number]["id"];
 
 export const TEXT_COLORS = ["#2B2B2B", "#FFFFFF", "#D7263D", "#1F4E79", "#2E6B3F", "#6B3FA0", "#8A5A2B"];
 export const TEXT_BGS: (string | null)[] = [null, "#FFFFFF", "#2B2B2B", "#F6E27A", "#F4B6C2", "#9CC9E8"];
+
+/** Paper types for the letter sheet (drawn in components/letters/Paper.tsx). */
+export const PAPERS = [
+  { id: "lined", label: "lined" },
+  { id: "notebook", label: "notebook" },
+  { id: "plain", label: "plain" },
+  { id: "grid", label: "grid" },
+  { id: "dotted", label: "dotted" },
+  { id: "kraft", label: "kraft" },
+  { id: "vintage", label: "vintage" },
+  { id: "pink", label: "pink" },
+  { id: "airmail", label: "airmail" },
+] as const;
+export type PaperId = (typeof PAPERS)[number]["id"];
+const isPaper = (v: unknown): v is PaperId => PAPERS.some((p) => p.id === v);
 
 export const BACKGROUNDS = [
   { id: "peach", label: "peach haze", css: "radial-gradient(circle at 25% 35%, #f3c6a3 0%, #e7d2c0 38%, #b5c3d6 78%, #9fb3cf 100%)" },
@@ -130,12 +145,13 @@ export function isCanvasLetter(stickers: unknown): boolean {
   return Array.isArray(stickers) && stickers.some((s) => s && typeof s === "object" && "kind" in s);
 }
 
-export function readCanvas(stickers: unknown): { elements: CanvasEl[]; photocard: boolean } {
-  if (!Array.isArray(stickers)) return { elements: [], photocard: false };
+export function readCanvas(stickers: unknown): { elements: CanvasEl[]; photocard: boolean; paper: PaperId } {
+  if (!Array.isArray(stickers)) return { elements: [], photocard: false, paper: "lined" };
   const meta = stickers.find((s) => s?.kind === "meta") as MetaEl | undefined;
   return {
     elements: stickers.filter((s) => s?.kind && s.kind !== "meta") as CanvasEl[],
     photocard: !!meta?.photocard,
+    paper: isPaper(meta?.paper) ? meta.paper : "lined",
   };
 }
 

@@ -276,7 +276,7 @@ function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
       >
         {canvas ? (
           <div className="rounded-[18px] p-4 sm:p-7" style={{ background: backgroundCss(letter.paper_style), boxShadow: "0 30px 60px -20px rgb(0 0 0 / .55)" }}>
-            <LetterCanvas elements={readCanvas(letter.stickers).elements} mode="view" />
+            <LetterCanvas elements={readCanvas(letter.stickers).elements} paper={readCanvas(letter.stickers).paper} mode="view" />
           </div>
         ) : (
           <div className="rounded-[18px] p-4 sm:p-7" style={{ background: env.paper, boxShadow: "0 30px 60px -20px rgb(0 0 0 / .55)" }}>

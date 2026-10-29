@@ -9,12 +9,13 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { PIN_COLORS, getBrowserId, newBoardMeta, uploadMedia, type Letter } from "@/lib/letters";
 import {
-  BACKGROUNDS, CANVAS_FONTS, STICKER_PAGES, TEXT_BGS, TEXT_COLORS, backgroundCss, heightFor, parseVideo,
-  plainText, safeUrl, stickerLabel, stickerShape, stickerSrc, uid, type CanvasEl, type ElementKind, type StickerName,
+  BACKGROUNDS, CANVAS_FONTS, PAPERS, STICKER_PAGES, TEXT_BGS, TEXT_COLORS, backgroundCss, heightFor, parseVideo,
+  plainText, safeUrl, stickerLabel, stickerShape, stickerSrc, uid, type CanvasEl, type ElementKind, type PaperId, type StickerName,
 } from "@/lib/canvas";
 import { ease, fadeOut, spring } from "@/lib/motion";
 import { LetterCanvas } from "./LetterCanvas";
 import { Photocard } from "./Photocard";
+import { PaperSwatch } from "./Paper";
 
 type Dialog = null | { kind: "link" | "video" | "audio"; editId?: string };
 /** A new element before it gets an id, stacking order and (optionally) a position. */
@@ -38,6 +39,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [bg, setBg] = useState<string>("peach");
+  const [paper, setPaper] = useState<PaperId>("lined");
   const [photocard, setPhotocard] = useState(false);
   const [cardSrc, setCardSrc] = useState<string | null>(null);
   const cardInput = useRef<HTMLInputElement>(null);
@@ -219,7 +221,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
         paper_style: bg,
         font: "caveat",
         ink_color: "#2B2B2B",
-        stickers: JSON.parse(JSON.stringify([{ kind: "meta", photocard: !!cover }, ...stored])) as Json,
+        stickers: JSON.parse(JSON.stringify([{ kind: "meta", photocard: !!cover, paper }, ...stored])) as Json,
         photo_url: cover,
         signature_url: null,
         pin_color: PIN_COLORS[Math.floor(Math.random() * PIN_COLORS.length)]!,
@@ -361,6 +363,17 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                 {!photocard && <p className="-mt-1 text-xs text-ink/50">tuck a printed photo in with your letter</p>}
               </Section>
 
+              <Section title="paper">
+                <div className="grid grid-cols-5 gap-2.5">
+                  {PAPERS.map((p) => (
+                    <button key={p.id} onClick={() => setPaper(p.id)} aria-label={`${p.label} paper`} aria-pressed={paper === p.id} title={p.label}
+                      className={`rounded-md p-1 transition-transform duration-200 hover:-translate-y-0.5 ${paper === p.id ? "bg-white ring-2 ring-ink" : "hover:bg-black/5"}`}>
+                      <PaperSwatch paper={p.id} />
+                    </button>
+                  ))}
+                </div>
+              </Section>
+
               <Section title="background">
                 <div className="grid grid-cols-5 gap-2.5">
                   {BACKGROUNDS.map((b) => (
@@ -400,11 +413,12 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
               />
             )}
             <div className="absolute inset-0 overflow-auto" onPointerDown={(e) => { if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.backdrop) { setSelected(null); if (editing) edit(null); } }}>
-            <div data-backdrop="1" className="flex min-h-full items-start justify-center px-6 pb-24 pt-20 sm:items-center">
-              <div style={{ width: `min(${Math.round(560 * zoom)}px, ${Math.round(88 * zoom)}%)` }} className="transition-[width] duration-200">
+            <div data-backdrop="1" className="flex min-h-full items-start justify-center px-6 pb-20 pt-16 sm:items-center">
+              <div style={{ width: `calc(min(560px, 88%, (100svh - 17rem) * 0.75) * ${zoom})` }} className="transition-[width] duration-200">
                 <div className="relative">
                 <LetterCanvas
                   elements={els}
+                  paper={paper}
                   mode={preview ? "view" : "edit"}
                   selectedId={selected}
                   editingId={editing}

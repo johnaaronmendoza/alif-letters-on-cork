@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import { Link2, Pause, Play, RotateCw } from "lucide-react";
-import { CANVAS_FONTS, parseVideo, stickerSrc, type CanvasEl, type LegacyStickerName } from "@/lib/canvas";
+import { CANVAS_FONTS, parseVideo, stickerSrc, type CanvasEl, type LegacyStickerName, type PaperId } from "@/lib/canvas";
+import { PaperSheet } from "./Paper";
 import { resolveMedia } from "@/lib/letters";
 import { StickerArt } from "./stickers";
 
@@ -19,19 +20,10 @@ export function useSrc(src: string | null | undefined) {
   return url;
 }
 
-// Torn top and bottom edges, generated once.
-const TORN = (() => {
-  const top: string[] = [], bottom: string[] = [];
-  for (let i = 0; i <= 40; i++) {
-    const x = (i / 40) * 100;
-    top.push(`${x.toFixed(2)}% ${(0.6 + Math.abs(Math.sin(i * 2.3)) * 1.1).toFixed(2)}%`);
-    bottom.unshift(`${x.toFixed(2)}% ${(99.4 - Math.abs(Math.cos(i * 1.9)) * 1.1).toFixed(2)}%`);
-  }
-  return `polygon(${[...top, ...bottom].join(",")})`;
-})();
-
 type Props = {
   elements: CanvasEl[];
+  /** Which paper the letter is written on. */
+  paper?: PaperId;
   mode: CanvasMode;
   selectedId?: string | null;
   editingId?: string | null;
@@ -42,7 +34,7 @@ type Props = {
   onGestureEnd?: () => void;
 };
 
-export function LetterCanvas({ elements, mode, selectedId, editingId, onSelect, onEdit, onChange, onGestureStart, onGestureEnd }: Props) {
+export function LetterCanvas({ elements, paper: paperType = "lined", mode, selectedId, editingId, onSelect, onEdit, onChange, onGestureStart, onGestureEnd }: Props) {
   const paper = useRef<HTMLDivElement>(null);
   const gesture = useRef<null | {
     id: string; type: Gesture; px: number; py: number;
@@ -116,15 +108,7 @@ export function LetterCanvas({ elements, mode, selectedId, editingId, onSelect, 
         className={`relative aspect-[3/4] w-full select-none ${editable ? "" : "overflow-hidden"}`}
         style={{ containerType: "inline-size", touchAction: editable ? "none" : undefined }}
       >
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[#fdfcf9]"
-          style={{
-            clipPath: TORN,
-            backgroundImage: "linear-gradient(to bottom, transparent 96%, rgb(90 130 190 / .16) 96%)",
-            backgroundSize: "100% 3.6%",
-          }}
-        />
+        <PaperSheet paper={paperType} />
         {sorted.map((el) => {
           const selected = editable && selectedId === el.id;
           return (
