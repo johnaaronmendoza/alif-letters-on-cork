@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useDialogFocus } from "@/lib/focus";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Link2, X } from "lucide-react";
+import { toast } from "sonner";
 import { ENVELOPE_GEOM, envelopeFor, type EnvelopeColor, type Letter, type Sticker } from "@/lib/letters";
 import { ease, fadeOut, spring } from "@/lib/motion";
 import { LetterPaper } from "./LetterPaper";
@@ -79,6 +80,16 @@ export function LetterOpen({ letter, origin, nav, onRead, onClose }: {
       <motion.div className="pointer-events-none fixed inset-0"
         animate={{ background: `radial-gradient(ellipse at 50% 45%, ${env.paper}33 0%, transparent 60%)` }} transition={{ duration: 0.4 }} />
 
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          const url = `${window.location.origin}/?letter=${letter.id}`;
+          navigator.clipboard?.writeText(url).then(() => toast("link copied — anyone with it can open this letter"), () => toast(url));
+        }}
+        aria-label="copy a link to this letter" title="copy link"
+        className="fixed right-[4.25rem] top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-white/90 text-ink shadow-item backdrop-blur transition-transform duration-200 hover:scale-105 active:scale-95">
+        <Link2 className="h-5 w-5" />
+      </button>
       <button onClick={onClose} aria-label="close"
         className="fixed right-4 top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-white/90 text-ink shadow-item backdrop-blur transition-transform duration-200 hover:scale-105 active:scale-95">
         <X className="h-5 w-5" />

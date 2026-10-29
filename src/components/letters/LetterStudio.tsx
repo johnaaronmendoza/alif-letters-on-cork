@@ -30,7 +30,13 @@ const same = (a: CanvasEl[], b: CanvasEl[]) => a === b || JSON.stringify(a) === 
 const MAX_IMAGE = 8 * 1024 * 1024;
 const MAX_AUDIO = 10 * 1024 * 1024;
 
-export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]; onClose: () => void; onPinned: (l: Letter) => void }) {
+export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
+  letters: Letter[];
+  /** Lets the page ask before a back gesture discards the draft. */
+  guardRef?: { current: (() => boolean) | null };
+  onClose: () => void;
+  onPinned: (l: Letter) => void;
+}) {
   const [from, setFrom] = useState("");
   const fromInput = useRef<HTMLInputElement>(null);
   const [nameNudge, setNameNudge] = useState(0); // bumps to shake the name field
@@ -148,6 +154,12 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  useEffect(() => {
+    if (!guardRef) return;
+    guardRef.current = () => untouched(elsRef.current) || confirm("leave without pinning? your letter will be lost");
+    return () => { guardRef.current = null; };
+  }, [guardRef]);
 
   const requestClose = () => {
     if (!untouched(elsRef.current) && !confirm("leave without pinning? your letter will be lost")) return;
@@ -303,7 +315,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   // a soft stroke glides along the empty line now and then, to draw the eye
                   <span className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 overflow-hidden">
                     <motion.span className="block h-full w-1/3 bg-gradient-to-r from-transparent via-ink/70 to-transparent"
-                      animate={{ x: ["-100%", "300%"] }} transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }} />
+                      animate={{ x: ["-100%", "300%"] }} transition={{ duration: 1.6, repeat: 3, repeatDelay: 2.4, ease: "easeInOut" }} />
                   </span>
                 )}
               </span>

@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion, useAnimate } from "framer-motion";
-import { RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { Mail, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { ART_ASPECT, envelopeFor, jitter, layoutBoard, playStamp, playThunk, type Letter } from "@/lib/letters";
@@ -57,6 +57,12 @@ export const Route = createFileRoute("/")({
       { rel: "preload", as: "image", href: "/board/intro/empty.webp", fetchPriority: "high" },
     ],
   }),
+  // ?letter=<id> opens that letter (shareable); ?write=1 is the editor. Both make the
+  // browser/phone back button close them instead of leaving the site.
+  validateSearch: (s: Record<string, unknown>): { letter?: string; write?: 1 } => ({
+    letter: typeof s["letter"] === "string" && /^[0-9a-f-]{36}$/i.test(s["letter"]) ? s["letter"] : undefined,
+    write: s["write"] === 1 || s["write"] === "1" ? 1 : undefined,
+  }),
   component: Room,
 });
 
@@ -78,6 +84,60 @@ function Room() {
     });
   }, []);
   const [studio, setStudio] = useState(false);
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const openRef = useRef(open); openRef.current = open;
+  const studioRef = useRef(studio); studioRef.current = studio;
+  // did *we* push the history entry? then closing goes back; otherwise it just cleans the URL
+  const pushedLetter = useRef(false);
+  const pushedStudio = useRef(false);
+  // asks before a back gesture throws away a draft; set by the editor
+  const studioGuard = useRef<(() => boolean) | null>(null);
+  const setSearch = (next: { letter?: string; write?: 1 }, replace = false) =>
+    void navigate({ to: "/", search: next, replace, resetScroll: false });
+
+  const openLetter = (l: Letter, rect?: DOMRect) => {
+    setOpen({ letter: l, rect, dir: 0 });
+    pushedLetter.current = true;
+    setSearch({ letter: l.id });
+  };
+  const closeLetter = () => {
+    setOpen(null);
+    if (pushedLetter.current) { pushedLetter.current = false; window.history.back(); }
+    else setSearch({}, true);
+  };
+  const openStudio = () => {
+    setStudio(true);
+    pushedStudio.current = true;
+    setSearch({ write: 1 });
+  };
+  const closeStudio = () => {
+    setStudio(false);
+    if (pushedStudio.current) { pushedStudio.current = false; window.history.back(); }
+    else setSearch({}, true);
+  };
+
+  // URL → state: back/forward buttons and shared links
+  useEffect(() => {
+    const id = search.letter;
+    if (!id) {
+      if (openRef.current) { pushedLetter.current = false; setOpen(null); }
+      return;
+    }
+    if (openRef.current?.letter.id === id) return;
+    const l = letters.find((x) => x.id === id);
+    if (l) setOpen({ letter: l, dir: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.letter, letters]);
+  useEffect(() => {
+    if (search.write) { if (!studioRef.current) setStudio(true); return; }
+    if (!studioRef.current) return;
+    // back gesture while writing: confirm first if there's a draft, otherwise close
+    if (studioGuard.current && !studioGuard.current()) { pushedStudio.current = true; setSearch({ write: 1 }); return; }
+    pushedStudio.current = false;
+    setStudio(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.write]);
   const [muted, setMuted] = useState(false);
   const mutedRef = useRef(false);
   mutedRef.current = muted;
@@ -89,7 +149,8 @@ function Room() {
   useEffect(() => {
     let seen = false;
     try { seen = localStorage.getItem("alif-intro-seen") === "1"; } catch { /* storage blocked */ }
-    if (seen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntro(false);
+    const linked = new URLSearchParams(window.location.search).has("letter");
+    if (seen || linked || window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntro(false);
     try { sessionStorage.removeItem("alif-chunk-reload"); } catch { /* storage blocked */ }
   }, []);
   const stamp = () => {
@@ -144,7 +205,7 @@ function Room() {
   }
 
   const onPinned = (l: Letter) => {
-    setStudio(false);
+    closeStudio();
     addLetter(l);
     setTimeout(() => document.getElementById(`letter-${l.id}`)?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }), 100);
   };
@@ -158,6 +219,7 @@ function Room() {
     if (!target) return;
     prefetchOpen(envelopeFor(target.id).name);
     setOpen({ letter: target, dir });
+    setSearch({ letter: target.id }, true); // next/previous replace, so back still closes the letter
   };
   // warm up the neighbours, so next/previous is instant
   useEffect(() => {
@@ -172,19 +234,19 @@ function Room() {
     <main className="wall relative min-h-screen overflow-x-hidden pb-28">
       {/* the collage carries the title; keep a heading for screen readers */}
       <h1 className="sr-only">Letters for Alif — {letters.length} {letters.length === 1 ? "letter" : "letters"} pinned</h1>
-      <button onClick={() => { setMuted(!muted); localStorage.setItem("alif-muted", muted ? "0" : "1"); }} aria-label={muted ? "unmute" : "mute"} className="fixed bottom-5 left-5 z-40 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-card/80 text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
+      <button onClick={() => { setMuted(!muted); localStorage.setItem("alif-muted", muted ? "0" : "1"); }} aria-label={muted ? "unmute" : "mute"} className="absolute left-3 top-3 z-40 grid h-11 w-11 md:fixed md:bottom-5 md:left-5 md:top-auto cursor-pointer place-items-center rounded-full bg-card/80 text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
       {!intro && (
         <button onClick={replayIntro} aria-label="replay the intro" title="replay the intro"
-          className="fixed bottom-5 left-[4.25rem] z-40 flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-card/80 px-3.5 font-clean text-xs text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
+          className="absolute left-[3.75rem] top-3 z-40 flex h-11 md:fixed md:bottom-5 md:left-[4.25rem] md:top-auto cursor-pointer items-center gap-1.5 rounded-full bg-card/80 px-3.5 font-clean text-xs text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
           <RotateCcw className="h-4 w-4" aria-hidden />
           <span className="hidden sm:inline">replay intro</span>
         </button>
       )}
 
       {isMobile ? (
-      <section className="relative mx-auto w-full px-3 pt-6">
+      <section className="relative mx-auto w-full px-3 pt-16">
         {/* phones: the collage on top, the figures on a shelf, then the letters in a
             scattered grid of envelopes that grows downward */}
         <div ref={board} className="frame rounded-md p-[2.2%]">
@@ -218,7 +280,7 @@ function Room() {
                 {ordered.map((l, i) => (
                   <BoardItem key={l.id} letter={l} flow spot={{ x: 0, y: 0, r: jitter(l.id, 4) * 5 }} boardHeight={100} index={i}
                     isNew={newIds.has(l.id)} read={read.has(l.id)} onPrefetch={() => prefetchOpen(envelopeFor(l.id).name)}
-                    onOpen={(rect) => setOpen({ letter: l, rect, dir: 0 })} />
+                    onOpen={(rect) => openLetter(l, rect)} />
                 ))}
               </div>
             ))}
@@ -265,7 +327,7 @@ function Room() {
                 {!intro && letters.map((l, i) => {
                   const spot = spots.get(l.id);
                   return spot ? (
-                    <BoardItem key={l.id} letter={l} spot={spot} boardHeight={height} index={i} isNew={newIds.has(l.id)} onPrefetch={() => prefetchOpen(envelopeFor(l.id).name)} read={read.has(l.id)} onOpen={(rect) => setOpen({ letter: l, rect, dir: 0 })} />
+                    <BoardItem key={l.id} letter={l} spot={spot} boardHeight={height} index={i} isNew={newIds.has(l.id)} onPrefetch={() => prefetchOpen(envelopeFor(l.id).name)} read={read.has(l.id)} onOpen={(rect) => openLetter(l, rect)} />
                   ) : null;
                 })}
               </div>
@@ -277,7 +339,7 @@ function Room() {
 
       {!intro && (
       <motion.button
-        onClick={() => setStudio(true)}
+        onClick={openStudio}
         onPointerEnter={() => void loadStudio()}
         onFocus={() => void loadStudio()}
         className="paper-tag fixed bottom-5 right-5 z-40 min-h-11 cursor-pointer px-5 py-3 pl-8 font-hand text-2xl text-ink focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
@@ -292,7 +354,7 @@ function Room() {
         whileHover={{ scale: 1.05, rotate: -1, transition: spring.soft }}
         whileTap={{ scale: 0.96, transition: spring.snappy }}
       >
-        ✉ write alif a letter
+        <Mail className="-mt-1 mr-2 inline h-5 w-5" strokeWidth={1.75} aria-hidden />write alif a letter
       </motion.button>
       )}
 
@@ -303,7 +365,7 @@ function Room() {
               letter={open.letter}
               origin={open.rect}
               onRead={markRead}
-              onClose={() => setOpen(null)}
+              onClose={closeLetter}
               nav={openIndex < 0 ? undefined : {
                 index: openIndex,
                 total: ordered.length,
@@ -316,7 +378,7 @@ function Room() {
         )}
         {studio && (
           <Suspense key="studio" fallback={<Opening />}>
-            <LetterStudio letters={letters} onClose={() => setStudio(false)} onPinned={onPinned} />
+            <LetterStudio letters={letters} guardRef={studioGuard} onClose={closeStudio} onPinned={onPinned} />
           </Suspense>
         )}
       </AnimatePresence>

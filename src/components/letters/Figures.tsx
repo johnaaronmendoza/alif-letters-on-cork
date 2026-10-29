@@ -8,8 +8,8 @@ import { ease, spring } from "@/lib/motion";
  * money gun → cash burst · cigarettes → lighter flick, then "nope." ·
  * mints → tin rattles and mints bounce out · doll → eyes follow you.
  *
- * Until someone taps one, they wiggle now and then; that stops for good
- * (in this browser) after the first tap.
+ * Until someone taps one, each wiggles a few times (one at a time) and then rests;
+ * after the first tap that stops for good in this browser.
  */
 const FoundContext = createContext<() => void>(() => {});
 
@@ -37,7 +37,8 @@ export function BoardFigures({ muted, layout = "corners" }: { muted: boolean; la
       <motion.div
         style={{ originX: 0.5, originY: 1 }}
         animate={found ? { rotate: 0 } : { rotate: [0, -7, 6, -4, 2, 0] }}
-        transition={found ? { duration: 0.2 } : { duration: 0.8, delay: 3 + i * 1.7, repeat: Infinity, repeatDelay: 6.5, ease: "easeInOut" }}
+        // three wiggles each, one figure at a time, then they rest (no endless decorative motion)
+        transition={found ? { duration: 0.2 } : { duration: 0.8, delay: 4 + i * 2.6, repeat: 2, repeatDelay: 11, ease: "easeInOut" }}
       >
         {f.toy === "money-gun" && <MoneyGun f={f} muted={muted} />}
         {f.toy === "lighter" && <Lighter f={f} muted={muted} />}
