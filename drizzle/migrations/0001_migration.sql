@@ -1,0 +1,2 @@
+CREATE POLICY "anyone can upload letter media" ON storage.objects FOR INSERT TO anon, authenticated WITH CHECK (bucket_id IN ('photos','signatures'));
+CREATE POLICY "anyone can view letter media" ON storage.objects FOR SELECT TO anon, authenticated USING (bucket_id IN ('photos','signatures'));
