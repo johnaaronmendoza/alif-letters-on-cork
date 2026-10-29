@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { PIN_ORIGIN, ease, spring } from "@/lib/motion";
 import { Lock } from "lucide-react";
 import { fontClass, isLocked, paperKind, sealText, type Letter, type Sticker } from "@/lib/letters";
 import { paperBg, useMedia } from "./LetterPaper";
@@ -11,24 +12,50 @@ export function Pin({ color }: { color: string }) {
   );
 }
 
-export function BoardItem({ letter, isNew, onOpen }: { letter: Letter; isNew: boolean; onOpen: () => void }) {
+export function BoardItem({
+  letter, isNew, index, pages, onOpen,
+}: {
+  letter: Letter;
+  isNew: boolean;
+  /** Position in load order, used for the entrance stagger. */
+  index: number;
+  /** How many base pages tall the board currently is. */
+  pages: number;
+  onOpen: (rect: DOMRect) => void;
+}) {
   const kind = paperKind(letter.paper_style);
   const sticker = ((letter.stickers as Sticker[] | null) ?? [])[0]?.type ?? "♡";
   const locked = isLocked(letter);
   const photo = useMedia(kind === "polaroid" ? letter.photo_url : null);
   const useTape = letter.paper_style === "postcard" || letter.paper_style === "grid";
+  const r = letter.rotation;
 
   return (
+    // Static wrapper owns placement + centering, so the animated child can't clobber it.
+    <div
+      className="absolute z-10 -translate-x-1/2 -translate-y-1/2 hover:z-30 focus-within:z-30"
+      style={{
+        left: `${letter.board_x}%`,
+        top: `${letter.board_y / pages}%`,
+        width: kind === "postcard" ? "14%" : "11%",
+        minWidth: kind === "postcard" ? 104 : 84,
+      }}
+    >
     <motion.button
       id={`letter-${letter.id}`}
-      onClick={onOpen}
-      initial={isNew ? { y: -500, opacity: 0, rotate: letter.rotation - 25 } : { opacity: 0, scale: 0.9 }}
-      animate={isNew ? { y: 0, opacity: 1, rotate: [letter.rotation - 25, letter.rotation + 6, letter.rotation - 3, letter.rotation] } : { opacity: 1, scale: 1, rotate: letter.rotation }}
-      transition={isNew ? { type: "spring", stiffness: 140, damping: 12, rotate: { duration: 1.1 } } : { duration: 0.4 }}
-      whileHover={{ scale: 1.08, rotate: letter.rotation * 0.4, zIndex: 30 }}
-      className="absolute -translate-x-1/2 -translate-y-1/2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      style={{ left: `${letter.board_x}%`, top: `${letter.board_y}%`, width: kind === "postcard" ? "14%" : "11%", minWidth: kind === "postcard" ? 104 : 84 }}
-      aria-label={`letter from ${letter.from_name}`}
+      onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
+      style={{ transformOrigin: PIN_ORIGIN }}
+      initial={isNew ? { y: -220, opacity: 0, rotate: r - 12, scale: 1.05 } : { opacity: 0, y: 10, rotate: r, scale: 0.96 }}
+      animate={{ y: 0, opacity: 1, rotate: r, scale: 1 }}
+      transition={
+        isNew
+          ? { ...spring.drop, opacity: { duration: 0.15 } }
+          : { duration: 0.38, ease: ease.out, delay: Math.min(index, 24) * 0.04 }
+      }
+      whileHover={{ y: -6, scale: 1.04, rotate: r * 0.4, transition: spring.soft }}
+      whileTap={{ scale: 0.97, transition: spring.snappy }}
+      className="relative block w-full cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cork"
+      aria-label={`${locked ? "locked " : ""}letter from ${letter.from_name}${letter.open_when_label ? `, open when ${letter.open_when_label}` : ""}`}
     >
       {useTape ? (
         <span className="absolute -top-2 left-1/2 z-10 h-4 w-3/5 -translate-x-1/2 -rotate-3 opacity-85" style={{ background: letter.pin_color }} />
@@ -72,6 +99,7 @@ export function BoardItem({ letter, isNew, onOpen }: { letter: Letter; isNew: bo
         <span className="absolute -bottom-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-ink text-cream shadow-item"><Lock className="h-3.5 w-3.5" /></span>
       )}
     </motion.button>
+    </div>
   );
 }
 

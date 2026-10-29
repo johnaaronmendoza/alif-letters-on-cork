@@ -8,6 +8,7 @@ import {
   getBrowserId, pickBoardSpot, sealText, uploadMedia, type Letter, type Sticker,
 } from "@/lib/letters";
 import { LetterPaper, paperBg, type PaperData } from "./LetterPaper";
+import { ease, fadeOut, spring } from "@/lib/motion";
 
 const STEPS = ["style", "write", "decorate", "seal"] as const;
 
@@ -67,18 +68,21 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   };
 
   const chip = (active: boolean) =>
-    `rounded-full border px-3 py-1.5 text-sm transition ${active ? "border-ink bg-ink text-cream" : "border-ink/20 bg-card hover:border-ink/50"}`;
+    `min-h-11 cursor-pointer rounded-full border px-4 py-2 text-sm transition-colors duration-200 ${active ? "border-ink bg-ink text-cream" : "border-ink/20 bg-card hover:border-ink/50"}`;
 
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/60 backdrop-blur-sm sm:items-center sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+    <motion.div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/60 backdrop-blur-sm sm:items-center sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.25, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }} onClick={onClose} role="dialog" aria-modal="true" aria-label="letter studio">
       <motion.div
         onClick={(e) => e.stopPropagation()}
-        initial={{ y: 60, rotate: -1 }} animate={{ y: 0, rotate: 0 }} exit={{ y: 60 }}
+        style={{ transformOrigin: "100% 100%" }}
+        initial={{ opacity: 0, y: 40, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1, transition: { ...spring.soft, opacity: { duration: 0.2 } } }}
+        exit={{ opacity: 0, y: 24, scale: 0.97, transition: fadeOut }}
         className="paper-cream relative flex h-full w-full flex-col overflow-hidden shadow-paper sm:h-[90vh] sm:max-w-6xl sm:rounded-lg"
       >
         <header className="flex items-center justify-between border-b border-ink/10 px-5 py-3">
           <h2 className="font-hand text-3xl text-ink">letter studio ✎</h2>
-          <button onClick={onClose} aria-label="close" className="grid h-9 w-9 place-items-center rounded-full hover:bg-ink/5"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} aria-label="close" className="grid h-11 w-11 cursor-pointer place-items-center rounded-full transition-colors duration-200 hover:bg-ink/5"><X className="h-5 w-5" /></button>
         </header>
         <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[1.1fr_1fr] lg:overflow-hidden">
           <div className="bg-cork-soft p-4 sm:p-8 lg:overflow-y-auto">
@@ -95,7 +99,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                 </button>
               ))}
             </nav>
-            <div className="flex-1 space-y-5 overflow-y-auto border-t border-ink/10 p-5">
+            <motion.div key={step} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.22, ease: ease.out }} className="flex-1 space-y-5 overflow-y-auto border-t border-ink/10 p-5">
               {step === "style" && (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {PAPER_STYLES.map((p) => (
@@ -149,7 +153,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                       <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-2xl shadow-pin" style={{ background: sealColor, color: sealText(sealColor) }}>{sealSymbol}</span>
                       <div className="space-y-2">
                         <Swatches colors={SEAL_COLORS} value={sealColor} onChange={setSealColor} />
-                        <div className="flex gap-1">{SEAL_SYMBOLS.map((s) => <button key={s} onClick={() => setSealSymbol(s)} className={`grid h-8 w-8 place-items-center rounded-full ${sealSymbol === s ? "bg-ink text-cream" : "bg-ink/5"}`}>{s}</button>)}</div>
+                        <div className="flex flex-wrap gap-1.5">{SEAL_SYMBOLS.map((s) => <button key={s} onClick={() => setSealSymbol(s)} aria-label={`seal symbol ${s}`} aria-pressed={sealSymbol === s} className={`grid h-11 w-11 cursor-pointer place-items-center rounded-full text-lg transition-colors duration-200 ${sealSymbol === s ? "bg-ink text-cream" : "bg-ink/5 hover:bg-ink/10"}`}>{s}</button>)}</div>
                       </div>
                     </div>
                   </Field>
@@ -162,13 +166,13 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   </Field>
                 </>
               )}
-            </div>
+            </motion.div>
             <footer className="flex items-center justify-between gap-3 border-t border-ink/10 p-4">
-              <button disabled={step === "style"} onClick={() => setStep(STEPS[STEPS.indexOf(step) - 1]!)} className="font-hand text-xl text-ink/70 disabled:opacity-30">← back</button>
+              <button disabled={step === "style"} onClick={() => setStep(STEPS[STEPS.indexOf(step) - 1]!)} className="min-h-11 cursor-pointer px-2 font-hand text-xl text-ink/70 disabled:cursor-default disabled:opacity-30">← back</button>
               {step !== "seal" ? (
-                <button onClick={() => setStep(STEPS[STEPS.indexOf(step) + 1]!)} className="rotate-1 bg-butter px-5 py-2 font-hand text-2xl text-ink shadow-item">next →</button>
+                <button onClick={() => setStep(STEPS[STEPS.indexOf(step) + 1]!)} className="min-h-11 rotate-1 cursor-pointer bg-butter px-5 py-2 font-hand text-2xl text-ink shadow-item transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-95">next →</button>
               ) : (
-                <button disabled={busy} onClick={submit} className="-rotate-1 bg-cherry px-5 py-2 font-hand text-2xl text-primary-foreground shadow-item disabled:opacity-60">{busy ? "pinning…" : "📌 pin it to the board"}</button>
+                <button disabled={busy} onClick={submit} className="min-h-11 -rotate-1 cursor-pointer bg-cherry px-5 py-2 font-hand text-2xl text-white shadow-item transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 disabled:cursor-wait disabled:opacity-60">{busy ? "pinning…" : "📌 pin it to the board"}</button>
               )}
             </footer>
           </div>
@@ -184,9 +188,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Swatches({ colors, value, onChange }: { colors: string[]; value: string; onChange: (c: string) => void }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2" role="radiogroup">
       {colors.map((c) => (
-        <button key={c} onClick={() => onChange(c)} aria-label={c} className={`h-8 w-8 rounded-full shadow-sm transition ${value === c ? "scale-110 ring-2 ring-ink ring-offset-2" : ""}`} style={{ background: c }} />
+        <button key={c} onClick={() => onChange(c)} role="radio" aria-checked={value === c} aria-label={`color ${c}`} className={`h-11 w-11 cursor-pointer rounded-full shadow-sm transition-transform duration-200 hover:scale-105 ${value === c ? "scale-110 ring-2 ring-ink ring-offset-2" : ""}`} style={{ background: c }} />
       ))}
     </div>
   );

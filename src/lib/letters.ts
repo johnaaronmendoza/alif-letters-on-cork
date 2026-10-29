@@ -58,25 +58,45 @@ export function getBrowserId() {
   return id;
 }
 
-/** Grid of slots with jitter; picks the free slot farthest from existing letters. */
+/**
+ * Board layout. The board is GRID_COLS wide and grows downward one row at a time.
+ * board_x is % of board width; board_y is % of ONE base page (16:10, GRID_ROWS rows),
+ * so values above 100 mean the letter sits on an added row further down.
+ */
 export const GRID_COLS = 7;
 export const GRID_ROWS = 4;
+export const ROW_H = 100 / GRID_ROWS;
+
+/** Rows the board needs to show every letter (never fewer than one base page). */
+export function boardRows(ls: { board_y: number }[]) {
+  const lastRow = ls.reduce((m, l) => Math.max(m, Math.floor(l.board_y / ROW_H)), 0);
+  return Math.max(GRID_ROWS, lastRow + 1);
+}
+
+/** Picks the top-most free slot; adds a new row only when every slot is taken. */
 export function pickBoardSpot(existing: { board_x: number; board_y: number }[]) {
-  const slots: { x: number; y: number }[] = [];
-  for (let r = 0; r < GRID_ROWS; r++)
-    for (let c = 0; c < GRID_COLS; c++)
-      slots.push({ x: ((c + 0.5) / GRID_COLS) * 100, y: ((r + 0.5) / GRID_ROWS) * 100 });
   const minDist = (s: { x: number; y: number }) =>
     existing.reduce((m, e) => Math.min(m, Math.hypot(e.board_x - s.x, (e.board_y - s.y) * 0.625)), Infinity);
-  const free = slots.filter((s) => minDist(s) > 7);
-  const pool = free.length ? free : slots;
-  const slot = pool[Math.floor(Math.random() * pool.length)] ?? { x: 50, y: 50 };
-  const jx = (100 / GRID_COLS) * 0.18, jy = (100 / GRID_ROWS) * 0.15;
-  return {
-    board_x: clamp(slot.x + (Math.random() * 2 - 1) * jx, 6, 94),
-    board_y: clamp(slot.y + (Math.random() * 2 - 1) * jy, 9, 91),
-    rotation: Math.round((Math.random() * 16 - 8) * 10) / 10,
-  };
+  const startRows = boardRows(existing);
+  for (let rows = startRows; rows < startRows + 200; rows++) {
+    const free: { x: number; y: number; r: number }[] = [];
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < GRID_COLS; c++) {
+        const slot = { x: ((c + 0.5) / GRID_COLS) * 100, y: (r + 0.5) * ROW_H, r };
+        if (minDist(slot) > 7) free.push(slot);
+      }
+    if (!free.length) continue;
+    const topRow = Math.min(...free.map((f) => f.r));
+    const row = free.filter((f) => f.r === topRow);
+    const slot = row[Math.floor(Math.random() * row.length)]!;
+    const jx = (100 / GRID_COLS) * 0.18;
+    return {
+      board_x: clamp(slot.x + (Math.random() * 2 - 1) * jx, 6, 94),
+      board_y: clamp(slot.y + (Math.random() * 2 - 1) * 3, slot.r * ROW_H + 9, (slot.r + 1) * ROW_H - 9),
+      rotation: Math.round((Math.random() * 12 - 6) * 10) / 10,
+    };
+  }
+  return { board_x: 50, board_y: startRows * ROW_H + ROW_H / 2, rotation: 0 };
 }
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
