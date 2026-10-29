@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion, useAnimate } from "framer-motion";
-import { Volume2, VolumeX } from "lucide-react";
+import { RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
-import { ART_ASPECT, envelopeFor, layoutBoard, playStamp, playThunk, type Letter } from "@/lib/letters";
+import { ART_ASPECT, envelopeFor, jitter, layoutBoard, playStamp, playThunk, type Letter } from "@/lib/letters";
 import { spring } from "@/lib/motion";
 import { BoardFigures } from "@/components/letters/Figures";
 import { BoardItem } from "@/components/letters/BoardItem";
@@ -81,18 +82,29 @@ function Room() {
   const mutedRef = useRef(false);
   mutedRef.current = muted;
   const knownIds = useRef(new Set<string>());
-  // intro plays on every load; on by default so the full collage never flashes first
+  // intro plays on the first visit (per device) and on "replay intro"; on by default so the
+  // full collage never flashes first for new visitors
   const [intro, setIntro] = useState(true);
   const [board, animateBoard] = useAnimate();
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntro(false);
+    let seen = false;
+    try { seen = localStorage.getItem("alif-intro-seen") === "1"; } catch { /* storage blocked */ }
+    if (seen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntro(false);
     try { sessionStorage.removeItem("alif-chunk-reload"); } catch { /* storage blocked */ }
   }, []);
   const stamp = () => {
     if (board.current) void animateBoard(board.current, { x: [0, -12, 10, -7, 4, -2, 0], y: [0, 6, -4, 3, -1, 0] }, { duration: 0.45, ease: "easeOut" });
     if (!mutedRef.current) playStamp();
   };
-  const introDone = () => setIntro(false);
+  const introDone = () => {
+    setIntro(false);
+    try { localStorage.setItem("alif-intro-seen", "1"); } catch { /* storage blocked */ }
+  };
+  const replayIntro = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setIntro(true);
+  };
+  const isMobile = useIsMobile();
   // a small nudge when a heavy piece lands during the intro
   const nudge = () => {
     if (board.current) void animateBoard(board.current, { x: [0, -2, 1.5, 0], y: [0, 2, -1, 0] }, { duration: 0.22, ease: "easeOut" });
@@ -163,14 +175,63 @@ function Room() {
       <button onClick={() => { setMuted(!muted); localStorage.setItem("alif-muted", muted ? "0" : "1"); }} aria-label={muted ? "unmute" : "mute"} className="fixed bottom-5 left-5 z-40 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-card/80 text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
+      {!intro && (
+        <button onClick={replayIntro} aria-label="replay the intro" title="replay the intro"
+          className="fixed bottom-5 left-[4.25rem] z-40 flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-card/80 px-3.5 font-clean text-xs text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
+          <RotateCcw className="h-4 w-4" aria-hidden />
+          <span className="hidden sm:inline">replay intro</span>
+        </button>
+      )}
 
-      <section className="relative mx-auto w-full pt-16 md:pt-[clamp(5rem,11vh,8rem)]">
-        {/* phones: the board keeps a readable width and scrolls sideways.
-            md+: it is sized so the whole board, plus room for the figures above
-            and the write button below, fits in the window. */}
-        <div className="overflow-x-auto px-4 pb-4 md:overflow-visible md:px-0 md:pb-0">
+      {isMobile ? (
+      <section className="relative mx-auto w-full px-3 pt-6">
+        {/* phones: the collage on top, the figures on a shelf, then the letters in a
+            scattered grid of envelopes that grows downward */}
+        <div ref={board} className="frame rounded-md p-[2.2%]">
+          <div className="cork-photo relative w-full overflow-hidden rounded-sm">
+            <div className="relative w-full" style={{ aspectRatio: `${ART_ASPECT}` }}>
+              <img
+                src="/board/base-1600.webp"
+                srcSet="/board/base-1600.webp 1600w, /board/base.webp 2400w"
+                sizes="100vw"
+                alt="Alif's byebye collage: photos of Alif, a photo booth strip, a pig keychain, rock and Arsenal stickers"
+                width={2400}
+                height={1295}
+                fetchPriority={intro ? "low" : "high"}
+                draggable={false}
+                className="pointer-events-none absolute inset-0 block h-full w-full select-none"
+                style={{ maskImage: "linear-gradient(to bottom, #000 94%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 94%, transparent)" }}
+              />
+              {intro && <BoardIntro onStamp={stamp} onImpact={nudge} onDone={introDone} />}
+            </div>
+            {!intro && <BoardFigures muted={muted} layout="shelf" />}
+            {!intro && (letters.length === 0 ? (
+              <motion.p
+                initial={{ opacity: 0, y: -8, rotate: -5 }} animate={{ opacity: 1, y: 0, rotate: -3 }} transition={{ delay: 0.6, ...spring.soft }}
+                className="relative mx-auto mb-10 mt-6 w-fit bg-[#f8f4ea] px-4 py-2 text-center font-typewriter text-sm leading-snug text-ink shadow-[0_2px_4px_rgb(0_0_0/.2),0_8px_14px_-6px_rgb(0_0_0/.3)]"
+              >
+                <span className="absolute -top-2 left-1/2 h-3.5 w-12 -translate-x-1/2 rotate-2 bg-tape/80" />
+                no letters yet —<br />be the first to pin one ✉
+              </motion.p>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-[6%] gap-y-7 px-[6%] pb-12 pt-6">
+                {ordered.map((l, i) => (
+                  <BoardItem key={l.id} letter={l} flow spot={{ x: 0, y: 0, r: jitter(l.id, 4) * 5 }} boardHeight={100} index={i}
+                    isNew={newIds.has(l.id)} read={read.has(l.id)} onPrefetch={() => prefetchOpen(envelopeFor(l.id).name)}
+                    onOpen={(rect) => setOpen({ letter: l, rect, dir: 0 })} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      ) : (
+      <section className="relative mx-auto w-full pt-[clamp(5rem,11vh,8rem)]">
+        {/* sized so the whole board, plus room for the figures above and the write
+            button below, fits in the window */}
+        <div>
           <div
-            className="relative mx-auto w-[900px] max-w-none md:w-[min(76vw,calc((100svh-15rem)*1.78))] md:min-w-[600px]"
+            className="relative mx-auto w-[min(76vw,calc((100svh-15rem)*1.78))] min-w-[600px]"
             style={{ containerType: "inline-size" }}
           >
             {/* figures sit on the board's corners, positioned relative to the board itself */}
@@ -182,7 +243,7 @@ function Room() {
                 <img
                   src="/board/base-1600.webp"
                   srcSet="/board/base-1600.webp 1600w, /board/base.webp 2400w"
-                  sizes="(min-width: 768px) min(76vw, 1600px), 900px"
+                  sizes="min(76vw, 1600px)"
                   alt="Alif's byebye collage: photos of Alif, a photo booth strip, a pig keychain, rock and Arsenal stickers"
                   width={2400}
                   height={1295}
@@ -211,8 +272,8 @@ function Room() {
             </div>
           </div>
         </div>
-        <p className="mt-1 text-center font-clean text-xs text-ink/70 md:hidden">swipe sideways to see the whole board ↔</p>
       </section>
+      )}
 
       {!intro && (
       <motion.button

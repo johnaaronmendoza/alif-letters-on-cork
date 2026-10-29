@@ -23,7 +23,7 @@ export function Pin({ color }: { color: string }) {
 }
 
 export function BoardItem({
-  letter, spot, boardHeight, isNew, index, read = false, onOpen, onPrefetch,
+  letter, spot, boardHeight, isNew, index, read = false, flow = false, onOpen, onPrefetch,
 }: {
   letter: Letter;
   spot: BoardSpot;
@@ -33,6 +33,8 @@ export function BoardItem({
   /** Position in load order, used for the entrance stagger. */
   index: number;
   onOpen: (rect: DOMRect) => void;
+  /** Phones: sit in a grid instead of being placed on the collage. */
+  flow?: boolean;
   /** This viewer has opened it before: show it as an opened envelope. */
   read?: boolean;
   /** Called on hover / focus / press, to warm up what opening needs. */
@@ -48,8 +50,9 @@ export function BoardItem({
   return (
     // Static wrapper owns placement + centering, so the animated child can't clobber it.
     <div
-      className="absolute z-10 -translate-x-1/2 -translate-y-1/2 hover:z-30 focus-within:z-30"
-      style={{ left: `${spot.x}%`, top: `${(spot.y / boardHeight) * 100}%`, width: "11%", minWidth: 88 }}
+      className={flow ? "relative z-10 hover:z-30 focus-within:z-30" : "absolute z-10 -translate-x-1/2 -translate-y-1/2 hover:z-30 focus-within:z-30"}
+      // in the phone grid, every other column sits a little lower, so it reads as pinned, not tiled
+      style={flow ? { marginTop: index % 2 ? "1.6rem" : 0 } : { left: `${spot.x}%`, top: `${(spot.y / boardHeight) * 100}%`, width: "11%", minWidth: 88 }}
     >
       <motion.button
         id={`letter-${letter.id}`}
@@ -80,7 +83,7 @@ export function BoardItem({
             ) : (
               <img src={`/board/envelopes/${env}.webp`} alt="" width={600} height={457} draggable={false} loading="lazy" className="relative block h-full w-full select-none" />
             )}
-            <span className="absolute inset-x-[16%] top-[56%] -translate-y-1/2 truncate text-center font-typewriter text-[clamp(8px,0.82vw,12px)] leading-tight text-ink">
+            <span className={`absolute inset-x-[16%] top-[56%] -translate-y-1/2 truncate text-center font-typewriter leading-tight text-ink ${flow ? "text-[clamp(10px,3.1vw,13px)]" : "text-[clamp(8px,0.82vw,12px)]"}`}>
               {letter.from_name}
             </span>
           </div>

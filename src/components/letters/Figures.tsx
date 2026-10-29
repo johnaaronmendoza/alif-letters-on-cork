@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useAnimate, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { FIGURES, type Figure } from "@/lib/figures";
 import { ease, spring } from "@/lib/motion";
@@ -6,44 +6,108 @@ import { ease, spring } from "@/lib/motion";
 /**
  * The figures around the board, each with a tap toy:
  * money gun → cash burst · cigarettes → lighter flick, then "nope." ·
- * mints → tin rattles and mints bounce out · doll → head follows the cursor.
+ * mints → tin rattles and mints bounce out · doll → eyes follow you.
+ *
+ * Until someone taps one, they wiggle now and then and a "psst" note points at
+ * them; that stops for good (in this browser) after the first tap.
  */
-export function BoardFigures({ muted }: { muted: boolean }) {
+const FoundContext = createContext<() => void>(() => {});
+
+export function BoardFigures({ muted, layout = "corners" }: { muted: boolean; layout?: "corners" | "shelf" }) {
+  const [found, setFound] = useState(true); // assume found until we've checked, so nothing flashes
+  useEffect(() => {
+    try { setFound(localStorage.getItem("alif-toys-found") === "1"); } catch { setFound(false); }
+  }, []);
+  const markFound = () => {
+    if (found) return;
+    setFound(true);
+    try { localStorage.setItem("alif-toys-found", "1"); } catch { /* storage blocked */ }
+  };
+
+  const toy = (f: Figure, i: number) => (
+    <motion.div
+      className="relative"
+      style={{ rotate: layout === "shelf" ? f.rotation * 0.5 : f.rotation, originX: 0.5, originY: 1 }}
+      // finale: the figures pop in one after another
+      initial={{ opacity: 0, scale: 0.35, y: 14 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 420, damping: 15, delay: 0.15 + i * 0.12, opacity: { duration: 0.12, delay: 0.15 + i * 0.12 } }}
+    >
+      {/* idle wiggle, staggered, until a toy has been found */}
+      <motion.div
+        style={{ originX: 0.5, originY: 1 }}
+        animate={found ? { rotate: 0 } : { rotate: [0, -7, 6, -4, 2, 0] }}
+        transition={found ? { duration: 0.2 } : { duration: 0.8, delay: 3 + i * 1.7, repeat: Infinity, repeatDelay: 6.5, ease: "easeInOut" }}
+      >
+        {f.toy === "money-gun" && <MoneyGun f={f} muted={muted} />}
+        {f.toy === "lighter" && <Lighter f={f} muted={muted} />}
+        {f.toy === "mints" && <Mints f={f} muted={muted} />}
+        {f.toy === "doll" && <Doll f={f} />}
+      </motion.div>
+    </motion.div>
+  );
+
   return (
-    <>
-      {FIGURES.map((f, i) => (
-        // Static wrapper anchors the figure by its base; the toy inside does the motion.
-        <div
-          key={f.src}
-          className="pointer-events-none absolute z-20 hidden -translate-x-1/2 -translate-y-full md:block"
-          style={{ left: `${f.x}%`, top: f.y, width: `${f.w}%` }}
-        >
-          <motion.div
-            className="relative"
-            style={{ rotate: f.rotation, originX: 0.5, originY: 1 }}
-            // finale: the corner figures pop in one after another
-            initial={{ opacity: 0, scale: 0.35, y: 14 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 420, damping: 15, delay: 0.15 + i * 0.12, opacity: { duration: 0.12, delay: 0.15 + i * 0.12 } }}
-          >
-            {f.toy === "money-gun" && <MoneyGun f={f} muted={muted} />}
-            {f.toy === "lighter" && <Lighter f={f} muted={muted} />}
-            {f.toy === "mints" && <Mints f={f} muted={muted} />}
-            {f.toy === "doll" && <Doll f={f} />}
-          </motion.div>
+    <FoundContext.Provider value={markFound}>
+      {layout === "corners" ? (
+        <>
+          {FIGURES.map((f, i) => (
+            // Static wrapper anchors the figure by its base on its corner of the board.
+            <div key={f.src} className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full"
+              style={{ left: `${f.x}%`, top: f.y, width: `${f.w}%` }}>
+              {toy(f, i)}
+            </div>
+          ))}
+          <AnimatePresence>
+            {!found && (
+              <Hint key="hint" className="left-[7.5%] top-[1.5cqw]" text="← psst, tap us" />
+            )}
+          </AnimatePresence>
+        </>
+      ) : (
+        // phones: the figures stand on a little shelf under the collage
+        <div className="relative px-[3%] pb-3 pt-7">
+          <AnimatePresence>
+            {!found && <Hint key="hint" className="left-1/2 top-0 -translate-x-1/2" text="psst — tap us ↓" />}
+          </AnimatePresence>
+          <div className="relative z-10 flex items-end justify-around">
+            {FIGURES.map((f, i) => (
+              <div key={f.src} className="w-[20%]">{toy(f, i)}</div>
+            ))}
+          </div>
+          <div className="mx-[1%] -mt-1 h-2.5 rounded-[2px] bg-[linear-gradient(180deg,#d9b884,#b58e57)] shadow-[0_4px_6px_-2px_rgb(40_25_10/.5)]" aria-hidden />
         </div>
-      ))}
-    </>
+      )}
+    </FoundContext.Provider>
+  );
+}
+
+/** A small typed note on tape, pointing at the toys. */
+function Hint({ text, className }: { text: string; className: string }) {
+  return (
+    <motion.div
+      className={`pointer-events-none absolute z-30 ${className}`}
+      initial={{ opacity: 0, y: -6, rotate: -5 }}
+      animate={{ opacity: 1, y: 0, rotate: -3, transition: { delay: 2.5, ...spring.soft } }}
+      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+    >
+      <span className="relative block whitespace-nowrap bg-[#f8f4ea] px-3 py-1.5 font-typewriter text-xs text-ink shadow-[0_2px_4px_rgb(0_0_0/.2),0_6px_10px_-4px_rgb(0_0_0/.3)]">
+        <span className="absolute -top-2 left-1/2 h-3.5 w-10 -translate-x-1/2 rotate-2 bg-tape/80" />
+        {text}
+      </span>
+    </motion.div>
   );
 }
 
 /** Clickable figure image with a gentle hover lift. */
 function Toy({ label, onTap, children }: { label: string; onTap: () => void; children: ReactNode }) {
+  const found = useContext(FoundContext);
   return (
     <motion.button
       type="button"
       aria-label={label}
-      onClick={onTap}
+      title={label}
+      onClick={() => { found(); onTap(); }}
       className="pointer-events-auto relative block w-full cursor-pointer rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-4"
       whileHover={{ y: -4, scale: 1.03, transition: spring.soft }}
       whileTap={{ scale: 0.96, transition: spring.snappy }}

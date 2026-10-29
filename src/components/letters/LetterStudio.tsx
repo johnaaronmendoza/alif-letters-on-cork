@@ -3,7 +3,7 @@ import { useDialogFocus } from "@/lib/focus";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, Check, ChevronLeft, CirclePlus, Pin, ChevronRight, Copy, Eye, EyeOff, ImageIcon, Layers, Link2, Maximize, Mic, Minus, Pencil,
-  Plus, Redo2, Square, Trash2, Type, Undo2, Upload, Video, X,
+  Plus, Redo2, RotateCw, Square, Trash2, Type, Undo2, Upload, Video, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +51,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   const [cardSrc, setCardSrc] = useState<string | null>(null);
   const cardInput = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(0);
+  // phones: the side panel becomes a bottom panel with tabs
+  const [panel, setPanel] = useState<"add" | "stickers" | "paper" | "bg">("add");
+  const tab = (id: typeof panel) => (panel === id ? "" : "hidden lg:block");
   const [preview, setPreview] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -274,9 +277,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
         className="studio-paper flex h-full w-full flex-col overflow-hidden font-clean text-ink shadow-paper sm:rounded-xl"
       >
         {/* top bar */}
-        <header className="flex items-center gap-2 border-b-2 border-dashed border-[#8a6a45]/25 px-3 py-2 sm:px-5 sm:py-3">
+        <header className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b-2 border-dashed border-[#8a6a45]/25 px-3 py-2 sm:px-5 sm:py-3">
           <IconBtn label="back" onClick={requestClose}><ArrowLeft className="h-5 w-5" /></IconBtn>
-          <div className="min-w-0 flex-1">
+          <div className="order-last min-w-0 basis-full px-1 sm:order-none sm:basis-auto sm:flex-1 sm:px-0">
             {/* who the letter is from: signed on a dashed line, like a form */}
             <motion.label
               key={nameNudge}
@@ -306,7 +309,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
               </span>
             </motion.label>
           </div>
-          <IconBtn label="undo" onClick={undo} disabled={!canUndo}><Undo2 className="h-5 w-5" /></IconBtn>
+          <IconBtn label="undo" className="ml-auto sm:ml-0" onClick={undo} disabled={!canUndo}><Undo2 className="h-5 w-5" /></IconBtn>
           <IconBtn label="redo" onClick={redo} disabled={!canRedo}><Redo2 className="h-5 w-5" /></IconBtn>
           <IconBtn label="clear the letter" className="hidden sm:grid" disabled={!els.length} onClick={() => { if (confirm("clear everything on this letter?")) { commit([]); setSelected(null); } }}><Trash2 className="h-5 w-5" /></IconBtn>
           <IconBtn label={preview ? "back to editing" : "preview"} onClick={() => { setPreview(!preview); setSelected(null); setEditing(null); }}>
@@ -324,7 +327,16 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
         <div className="flex min-h-0 flex-1 flex-col-reverse lg:flex-row">
           {/* sidebar */}
           {!preview && (
-            <aside className="studio-kraft max-h-[42vh] shrink-0 overflow-y-auto border-t-2 border-dashed border-[#8a6a45]/30 p-4 lg:max-h-none lg:w-[300px] lg:border-r-2 lg:border-t-0 lg:p-6">
+            <aside className="studio-kraft max-h-[38vh] shrink-0 overflow-y-auto border-t-2 border-dashed border-[#8a6a45]/30 p-4 lg:max-h-none lg:w-[300px] lg:border-r-2 lg:border-t-0 lg:p-6">
+              <div role="tablist" aria-label="letter tools" className="sticky -top-4 z-10 -mx-4 -mt-4 mb-4 flex gap-1 border-b-2 border-dashed border-[#8a6a45]/25 bg-[#e3d3b5] px-3 py-2 lg:hidden">
+                {([["add", "add"], ["stickers", "stickers"], ["paper", "paper"], ["bg", "background"]] as const).map(([id, label]) => (
+                  <button key={id} type="button" role="tab" aria-selected={panel === id} onClick={() => setPanel(id)}
+                    className={`min-h-10 flex-1 rounded-[3px] font-typewriter text-[11px] uppercase tracking-[0.08em] transition-colors ${panel === id ? "paper-card text-ink" : "text-ink/65 hover:bg-black/5"}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className={tab("add")}>
               <Section title="elements">
                 <div className="grid grid-cols-2 gap-2.5">
                   <Tile icon={<Type className="h-5 w-5" />} label="text" onClick={addText} />
@@ -336,7 +348,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   <Tile icon={<Video className="h-5 w-5" />} label="video" onClick={() => setDialog({ kind: "video" })} />
                 </div>
               </Section>
+              </div>
 
+              <div className={tab("stickers")}>
               <Section
                 title="stickers"
                 action={
@@ -358,7 +372,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   </motion.div>
                 </AnimatePresence>
               </Section>
+              </div>
 
+              <div className={tab("add")}>
               <Section title="photocard" action={
                 <button role="switch" aria-checked={photocard} aria-label="include a photocard" onClick={() => setPhotocard(!photocard)}
                   className={`grid h-7 w-7 place-items-center rounded-md border transition-colors duration-200 ${photocard ? "border-[#8a1c24] bg-[#8a1c24] text-white" : "border-black/20 bg-white"}`}>
@@ -388,7 +404,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                 </AnimatePresence>
                 {!photocard && <p className="-mt-1 text-xs text-ink/70">tuck a printed photo in with your letter</p>}
               </Section>
+              </div>
 
+              <div className={tab("paper")}>
               <Section title="paper">
                 <div className="grid grid-cols-5 gap-2.5">
                   {PAPERS.map((p) => (
@@ -399,7 +417,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   ))}
                 </div>
               </Section>
+              </div>
 
+              <div className={tab("bg")}>
               <Section title="background">
                 <div className="grid grid-cols-5 gap-2.5">
                   {BACKGROUNDS.map((b) => (
@@ -415,6 +435,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   <input ref={colorInput} type="color" className="sr-only" tabIndex={-1} onChange={(e) => setBg(e.target.value)} />
                 </div>
               </Section>
+              </div>
             </aside>
           )}
 
@@ -432,6 +453,14 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   else if (sel.kind === "audio") setDialog({ kind: "audio", editId: sel.id });
                   else choosePhotoFor(sel.id);
                 }}
+                onScale={(k) => {
+                  const w = Math.max(6, Math.min(140, sel.w * k));
+                  const f = w / sel.w;
+                  patch(sel.id, (sel.kind === "text"
+                    ? { w, x: sel.x + (sel.w - w) / 2, size: Math.max(1.6, Math.min(20, sel.size * f)) }
+                    : { w, h: sel.h * f, x: sel.x + (sel.w - w) / 2, y: sel.y + (sel.h - sel.h * f) / 2 }) as Partial<CanvasEl>);
+                }}
+                onRotate={() => patch(sel.id, { r: ((sel.r + 15 + 540) % 360) - 180 })}
                 onFront={() => patch(sel.id, { z: topZ() })}
                 onBack={() => patch(sel.id, { z: elsRef.current.reduce((m, e) => Math.min(m, e.z), 0) - 1 })}
                 onDuplicate={() => duplicate(sel)}
@@ -567,12 +596,12 @@ function IconBtn({ label, onClick, disabled, small, className = "", children }: 
   );
 }
 
-function Toolbar({ el, palette, setPalette, onPatch, onEdit, onFront, onBack, onDuplicate, onDelete }: {
+function Toolbar({ el, palette, setPalette, onPatch, onEdit, onScale, onRotate, onFront, onBack, onDuplicate, onDelete }: {
   el: CanvasEl;
   palette: null | "color" | "bg" | "layers";
   setPalette: (p: null | "color" | "bg" | "layers") => void;
   onPatch: (p: Partial<CanvasEl>) => void;
-  onEdit: () => void; onFront: () => void; onBack: () => void; onDuplicate: () => void; onDelete: () => void;
+  onEdit: () => void; onScale: (k: number) => void; onRotate: () => void; onFront: () => void; onBack: () => void; onDuplicate: () => void; onDelete: () => void;
 }) {
   const isText = el.kind === "text";
   const nextFont = () => {
@@ -620,6 +649,9 @@ function Toolbar({ el, palette, setPalette, onPatch, onEdit, onFront, onBack, on
           </div>
         )}
       </div>
+      <IconBtn label="smaller" onClick={() => onScale(1 / 1.15)}><Minus className="h-5 w-5" /></IconBtn>
+      <IconBtn label="bigger" onClick={() => onScale(1.15)}><Plus className="h-5 w-5" /></IconBtn>
+      <IconBtn label="rotate" onClick={onRotate}><RotateCw className="h-5 w-5" /></IconBtn>
       <IconBtn label="duplicate" onClick={onDuplicate}><Copy className="h-5 w-5" /></IconBtn>
       <IconBtn label="delete" onClick={onDelete}><Trash2 className="h-5 w-5" /></IconBtn>
     </motion.div>

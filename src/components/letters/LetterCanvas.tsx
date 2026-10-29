@@ -37,7 +37,7 @@ type Props = {
 export function LetterCanvas({ elements, paper: paperType = "lined", mode, selectedId, editingId, onSelect, onEdit, onChange, onGestureStart, onGestureEnd }: Props) {
   const paper = useRef<HTMLDivElement>(null);
   const gesture = useRef<null | {
-    id: string; type: Gesture; px: number; py: number;
+    id: string; type: Gesture; px: number; py: number; wasSelected: boolean; moved: boolean;
     cx: number; cy: number; start: CanvasEl; dist: number; angle: number;
   }>(null);
   const editable = mode === "edit";
@@ -52,7 +52,7 @@ export function LetterCanvas({ elements, paper: paperType = "lined", mode, selec
     const box = (e.currentTarget.closest("[data-el]") as HTMLElement).getBoundingClientRect();
     const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
     gesture.current = {
-      id: el.id, type, px: e.clientX, py: e.clientY, cx, cy, start: el,
+      id: el.id, type, px: e.clientX, py: e.clientY, cx, cy, start: el, wasSelected: selectedId === el.id, moved: false,
       dist: Math.hypot(e.clientX - cx, e.clientY - cy) || 1,
       angle: Math.atan2(e.clientY - cy, e.clientX - cx),
     };
@@ -64,6 +64,7 @@ export function LetterCanvas({ elements, paper: paperType = "lined", mode, selec
     const g = gesture.current;
     if (!g || !paper.current || !onChange) return;
     const rect = paper.current.getBoundingClientRect();
+    if (Math.hypot(e.clientX - g.px, e.clientY - g.py) > 5) g.moved = true;
     const s = g.start;
     let next: CanvasEl = s;
     if (g.type === "move") {
@@ -91,9 +92,12 @@ export function LetterCanvas({ elements, paper: paperType = "lined", mode, selec
   };
 
   const end = () => {
-    if (!gesture.current) return;
+    const g = gesture.current;
+    if (!g) return;
     gesture.current = null;
     onGestureEnd?.();
+    // tapping a text box that's already selected starts typing (double-tap is unreliable on phones)
+    if (g.type === "move" && !g.moved && g.wasSelected && g.start.kind === "text") onEdit?.(g.id);
   };
 
   return (
@@ -132,7 +136,7 @@ export function LetterCanvas({ elements, paper: paperType = "lined", mode, selec
                   <button
                     aria-label="rotate"
                     onPointerDown={(e) => begin(e, el, "rotate")}
-                    className="absolute -top-11 left-1/2 grid h-8 w-8 -translate-x-1/2 cursor-grab place-items-center rounded-full border border-black/10 bg-white text-ink shadow-md"
+                    className="absolute -top-12 left-1/2 grid h-10 w-10 -translate-x-1/2 cursor-grab place-items-center rounded-full border border-black/10 bg-white text-ink shadow-md"
                   >
                     <RotateCw className="h-4 w-4" />
                   </button>
@@ -141,7 +145,7 @@ export function LetterCanvas({ elements, paper: paperType = "lined", mode, selec
                       key={side}
                       aria-label={side === "width-r" ? "make wider or narrower from the right" : "make wider or narrower from the left"}
                       onPointerDown={(e) => begin(e, el, side)}
-                      className={`absolute top-1/2 grid h-10 w-6 -translate-y-1/2 cursor-ew-resize place-items-center ${side === "width-r" ? "-right-4" : "-left-4"}`}
+                      className={`absolute top-1/2 grid h-11 w-9 -translate-y-1/2 cursor-ew-resize place-items-center ${side === "width-r" ? "-right-5" : "-left-5"}`}
                     >
                       <span className="block h-6 w-2.5 rounded-full border-2 border-[#3b82f6] bg-white shadow" />
                     </button>
@@ -149,8 +153,10 @@ export function LetterCanvas({ elements, paper: paperType = "lined", mode, selec
                   <button
                     aria-label="resize"
                     onPointerDown={(e) => begin(e, el, "resize")}
-                    className="absolute -bottom-3 -right-3 h-6 w-6 cursor-nwse-resize rounded-full border-2 border-[#3b82f6] bg-white shadow"
-                  />
+                    className="absolute -bottom-5 -right-5 grid h-10 w-10 cursor-nwse-resize place-items-center"
+                  >
+                    <span className="block h-6 w-6 rounded-full border-2 border-[#3b82f6] bg-white shadow" />
+                  </button>
                 </>
               )}
             </div>
