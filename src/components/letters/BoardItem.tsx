@@ -68,7 +68,7 @@ export function BoardItem({
               </span>
             )}
             <img src={`/board/envelopes/${env}.webp`} alt="" width={600} height={457} draggable={false} loading="lazy" className="relative block h-full w-full select-none" />
-            <span className="absolute inset-x-[22%] top-[56%] -translate-y-1/2 truncate text-center font-clean text-[clamp(9px,1.05vw,15px)] font-semibold leading-tight text-ink">
+            <span className="absolute inset-x-[16%] top-[56%] -translate-y-1/2 truncate text-center font-typewriter text-[clamp(8px,0.82vw,12px)] leading-tight text-ink">
               {letter.from_name}
             </span>
           </div>
