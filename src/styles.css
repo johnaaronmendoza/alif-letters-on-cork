@@ -274,6 +274,9 @@
 }
 
 @layer base {
+  html {
+    touch-action: manipulation;
+  }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   label[for] {

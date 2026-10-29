@@ -62,6 +62,19 @@ const PACK: [file: number, aspect: number, w: number][] = [
   [28, 1.053, 22],
 ];
 const PACK_SHAPE = new Map(PACK.map(([file, aspect, w]) => [`s${file}`, { aspect, w, file }]));
+const PACK_LABEL: Record<number, string> = {
+  6: "heart doodle", 7: "star doodle", 8: "bow doodle", 9: "cherries", 10: "flame", 31: "sparkles",
+  11: "torn paper", 12: "grid paper", 13: "taped note", 14: "sticky note", 15: "torn page", 32: "clipped note",
+  21: "blue button", 22: "heart button", 23: "green button", 19: "gem hearts", 20: "rhinestones", 24: "red bow",
+  25: "green washi tape", 26: "pink washi tape", 36: "row of hearts", 18: "blue burst", 30: "yellow star", 37: "shrimp",
+  27: "eye storm", 29: "green skull", 33: "lightning bolt", 34: "rock stars", 35: "raccoon", 38: "push pin",
+  28: "Alif's face",
+};
+/** Human name for a sticker, for screen readers. */
+export function stickerLabel(name: string) {
+  const s = PACK_SHAPE.get(name);
+  return (s && PACK_LABEL[s.file]) ?? name.replace(/-/g, " ");
+}
 const PAGE_SIZE = 6;
 /** Sticker ids grouped into sidebar pages of six (doodles, notes, crafts, tape & bits, edgy, …). */
 export const STICKER_PAGES: string[][] = Array.from({ length: Math.ceil(PACK.length / PAGE_SIZE) }, (_, p) =>

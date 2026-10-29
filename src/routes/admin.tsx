@@ -3,15 +3,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { adminCheck, adminDeleteLetter } from "@/lib/admin.functions";
+import { adminCheck, adminClearBoard, adminDeleteLetter } from "@/lib/admin.functions";
 import type { Letter } from "@/lib/letters";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "admin — for alif ♡" },
+      { title: "admin — Alif's Byebye" },
       { name: "description", content: "Manage letters pinned to Alif's corkboard." },
-      { property: "og:title", content: "admin — for alif ♡" },
+      { property: "og:title", content: "admin — Alif's Byebye" },
       { property: "og:description", content: "Manage letters pinned to Alif's corkboard." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -24,6 +24,8 @@ export const Route = createFileRoute("/admin")({
 function Admin() {
   const check = useServerFn(adminCheck);
   const del = useServerFn(adminDeleteLetter);
+  const clear = useServerFn(adminClearBoard);
+  const [clearing, setClearing] = useState(false);
   const [pw, setPw] = useState("");
   const [ok, setOk] = useState(false);
   const [letters, setLetters] = useState<Letter[]>([]);
@@ -45,6 +47,30 @@ function Admin() {
             <button className="bg-ink px-4 py-2 text-cream">enter</button>
           </form>
         ) : (
+          <>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cherry/30 bg-cherry/5 p-4">
+            <div>
+              <div className="font-clean text-sm font-semibold text-ink">clear the board</div>
+              <p className="font-clean text-xs text-ink/60">deletes all {letters.length} letters and their photos and audio. this can't be undone.</p>
+            </div>
+            <button
+              disabled={clearing || !letters.length}
+              className="min-h-11 rounded-md bg-cherry px-4 font-clean text-sm text-white disabled:opacity-50"
+              onClick={async () => {
+                const typed = prompt(`type "clear the board" to delete all ${letters.length} letters`);
+                if (typed !== "clear the board") return;
+                setClearing(true);
+                try {
+                  const r = await clear({ data: { password: pw, confirm: "clear the board" } });
+                  setLetters([]);
+                  toast.success(`deleted ${r.deleted} letters`);
+                } catch { toast.error("couldn't clear the board"); }
+                finally { setClearing(false); }
+              }}
+            >
+              {clearing ? "clearing…" : "clear the board"}
+            </button>
+          </div>
           <ul className="mt-6 space-y-3">
             {letters.map((l) => (
               <li key={l.id} className="flex items-start justify-between gap-4 bg-card p-4 shadow-item">
@@ -61,6 +87,7 @@ function Admin() {
             ))}
             {!letters.length && <p className="font-hand text-xl">no letters yet.</p>}
           </ul>
+          </>
         )}
       </div>
     </main>

@@ -14,12 +14,16 @@ import { BoardIntro } from "@/components/letters/BoardIntro";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "for alif ♡ — letters on the corkboard" },
-      { name: "description", content: "A cozy scrapbook corkboard where friends pin letters for Alif. Write one, seal it, pin it." },
-      { property: "og:title", content: "for alif ♡ — letters on the corkboard" },
-      { property: "og:description", content: "Write Alif a letter and pin it to the shared corkboard." },
+      { title: "Alif's Byebye — leave him a letter" },
+      { name: "description", content: "Alif's farewell corkboard. Write him a letter, decorate it, and pin it to the board." },
+      { property: "og:title", content: "Alif's Byebye" },
+      { property: "og:description", content: "Write Alif a goodbye letter and pin it to his corkboard." },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "/og.jpg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "/og.jpg" },
     ],
   }),
   component: Room,
