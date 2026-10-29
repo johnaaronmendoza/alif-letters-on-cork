@@ -17,17 +17,13 @@ export const PAPER_STYLES = [
 
 export const FONTS = [
   { id: "caveat", label: "Caveat", cls: "font-hand" },
-  { id: "patrick", label: "Patrick Hand", cls: "font-patrick" },
   { id: "typewriter", label: "Special Elite", cls: "font-typewriter" },
-  { id: "inter", label: "Inter", cls: "font-clean" },
+  { id: "poppins", label: "Poppins", cls: "font-clean" },
 ] as const;
+/** Fonts that were removed, mapped to their closest replacement for older letters. */
+const RETIRED_FONTS: Record<string, string> = { patrick: "font-hand", inter: "font-clean" };
 
-export const INK_COLORS = ["#2B2B2B", "#1F4E79", "#D7263D", "#2E6B3F", "#6B3FA0", "#8A5A2B"];
 export const PIN_COLORS = ["#D7263D", "#9CC9E8", "#F6E27A", "#F4B6C2", "#7BC47F", "#2B2B2B"];
-export const SEAL_COLORS = ["#D7263D", "#7A1E2C", "#9CC9E8", "#F6E27A", "#2E6B3F", "#6B3FA0"];
-export const SEAL_SYMBOLS = ["♡", "★", "☾", "✿", "A", "☀"];
-export const OPEN_WHEN = ["you miss me", "you need a laugh", "it's your birthday", "you're stressed", "you can't sleep"];
-export const STICKERS = ["❤️", "💖", "⭐", "✨", "🍒", "🍓", "🌼", "🌷", "🌙", "🦋", "📮", "💌", "🎀", "🧸", "☁️", "🐰"];
 
 /** Readable symbol color (ink or white) for a given seal background. */
 export function sealText(hex: string) {
@@ -42,7 +38,7 @@ export function sealText(hex: string) {
 }
 
 export function fontClass(id: string) {
-  return FONTS.find((f) => f.id === id)?.cls ?? "font-hand";
+  return FONTS.find((f) => f.id === id)?.cls ?? RETIRED_FONTS[id] ?? "font-hand";
 }
 export function paperKind(id: string) {
   return PAPER_STYLES.find((p) => p.id === id)?.kind ?? "letter";

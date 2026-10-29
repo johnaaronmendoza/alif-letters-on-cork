@@ -66,11 +66,6 @@ export function LetterPaper({
       className={`relative w-full overflow-hidden rounded-sm p-6 pb-10 shadow-paper sm:p-8 ${paperBg[data.paper_style] ?? "paper-cream"}`}
       style={{ color: data.ink_color, touchAction: onStickersChange ? "none" : undefined }}
     >
-      {data.open_when_label && (
-        <div className="mb-3 inline-block -rotate-2 bg-tape px-3 py-1 font-typewriter text-xs uppercase tracking-wider text-ink shadow-sm">
-          open when {data.open_when_label}
-        </div>
-      )}
       {photo && (
         <div className="float-right ml-4 mb-2 w-28 rotate-3 bg-card p-1.5 pb-5 shadow-paper sm:w-36">
           <div className="absolute -top-2 left-1/2 h-4 w-12 -translate-x-1/2 -rotate-6 bg-tape opacity-80" />

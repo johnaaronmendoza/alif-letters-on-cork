@@ -4,6 +4,8 @@ import { Lock, X } from "lucide-react";
 import { countdown, isLocked, sealText, type Letter, type Sticker } from "@/lib/letters";
 import { ease, fadeOut, spring } from "@/lib/motion";
 import { LetterPaper } from "./LetterPaper";
+import { LetterCanvas } from "./LetterCanvas";
+import { backgroundCss, isCanvasLetter, readCanvas } from "@/lib/canvas";
 
 /** Offset that places the centered envelope back over the item that was tapped. */
 function fromOrigin(origin: DOMRect | undefined) {
@@ -68,7 +70,7 @@ export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin
                 </svg>
               </motion.div>
               <p className="absolute inset-x-0 bottom-6 text-center font-hand text-2xl text-ink">
-                {letter.open_when_label ? `open when ${letter.open_when_label}` : `from ${letter.from_name}`}
+                from {letter.from_name}
               </p>
               <button
                 onClick={crack}
@@ -119,7 +121,14 @@ export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin
               animate={{ y: 0, rotate: 0, opacity: 1 }}
               transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
             >
-              <LetterPaper data={{ ...letter, stickers: (letter.stickers as Sticker[]) ?? [] }} />
+              {isCanvasLetter(letter.stickers) ? (
+                <div className="rounded-2xl p-5 shadow-paper sm:p-8" style={{ background: backgroundCss(letter.paper_style) }}>
+                  <LetterCanvas elements={readCanvas(letter.stickers).elements} mode="view" />
+                  <p className="mt-4 text-center font-hand text-2xl text-ink drop-shadow-[0_1px_0_rgb(255_255_255/.6)]">— {letter.from_name}</p>
+                </div>
+              ) : (
+                <LetterPaper data={{ ...letter, stickers: (letter.stickers as Sticker[]) ?? [] }} />
+              )}
             </motion.div>
           )}
         </AnimatePresence>

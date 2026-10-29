@@ -3,6 +3,8 @@ import { PIN_ORIGIN, ease, spring } from "@/lib/motion";
 import { Lock } from "lucide-react";
 import { fontClass, isLocked, paperKind, sealText, type Letter, type Sticker } from "@/lib/letters";
 import { paperBg, useMedia } from "./LetterPaper";
+import { LetterCanvas } from "./LetterCanvas";
+import { isCanvasLetter, readCanvas } from "@/lib/canvas";
 
 export function Pin({ color }: { color: string }) {
   return (
@@ -23,11 +25,12 @@ export function BoardItem({
   pages: number;
   onOpen: (rect: DOMRect) => void;
 }) {
-  const kind = paperKind(letter.paper_style);
+  const canvas = isCanvasLetter(letter.stickers);
+  const kind = canvas ? (letter.photo_url ? "polaroid" : "canvas") : paperKind(letter.paper_style);
   const sticker = ((letter.stickers as Sticker[] | null) ?? [])[0]?.type ?? "♡";
   const locked = isLocked(letter);
   const photo = useMedia(kind === "polaroid" ? letter.photo_url : null);
-  const useTape = letter.paper_style === "postcard" || letter.paper_style === "grid";
+  const useTape = !canvas && (letter.paper_style === "postcard" || letter.paper_style === "grid");
   const r = letter.rotation;
 
   return (
@@ -55,7 +58,7 @@ export function BoardItem({
       whileHover={{ y: -6, scale: 1.04, rotate: r * 0.4, transition: spring.soft }}
       whileTap={{ scale: 0.97, transition: spring.snappy }}
       className="relative block w-full cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cork"
-      aria-label={`${locked ? "locked " : ""}letter from ${letter.from_name}${letter.open_when_label ? `, open when ${letter.open_when_label}` : ""}`}
+      aria-label={`${locked ? "locked " : ""}letter from ${letter.from_name}`}
     >
       {useTape ? (
         <span className="absolute -top-2 left-1/2 z-10 h-4 w-3/5 -translate-x-1/2 -rotate-3 opacity-85" style={{ background: letter.pin_color }} />
@@ -63,6 +66,12 @@ export function BoardItem({
         <Pin color={letter.pin_color} />
       )}
 
+      {kind === "canvas" && (
+        <div className="pointer-events-none w-full">
+          <LetterCanvas elements={readCanvas(letter.stickers).elements} mode="thumb" />
+          <span className="absolute -bottom-2 left-1/2 max-w-[110%] -translate-x-1/2 -rotate-2 truncate bg-tape px-2 py-0.5 font-hand text-sm leading-tight text-ink shadow-sm">from {letter.from_name}</span>
+        </div>
+      )}
       {kind === "envelope" && (
         <div className={`relative aspect-[4/3] w-full shadow-item ${paperBg[letter.paper_style]}`}>
           <svg viewBox="0 0 100 75" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">

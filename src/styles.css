@@ -160,9 +160,8 @@
 
   --font-title: "Reenie Beanie", "Caveat", cursive;
   --font-hand: "Caveat", cursive;
-  --font-patrick: "Patrick Hand", "Caveat", cursive;
   --font-typewriter: "Special Elite", "Courier New", monospace;
-  --font-clean: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-clean: "Poppins", ui-sans-serif, system-ui, sans-serif;
 
   --shadow-item: 0 2px 3px rgb(40 25 10 / 0.25), 0 6px 14px -4px rgb(40 25 10 / 0.35);
   --shadow-paper: 0 4px 8px rgb(40 25 10 / 0.18), 0 18px 40px -12px rgb(40 25 10 / 0.45);

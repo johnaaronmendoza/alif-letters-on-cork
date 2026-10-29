@@ -26,13 +26,13 @@ export const Route = createFileRoute("/")({
 
 function Room() {
   const [letters, setLetters] = useState<Letter[]>([]);
-  const [newIds, setNewIds] = useState<Set<string>>(new Set());
+  const [newIds, setNewIds] = useState(() => new Set<string>());
   const [open, setOpen] = useState<{ letter: Letter; rect: DOMRect } | null>(null);
   const [studio, setStudio] = useState(false);
   const [muted, setMuted] = useState(false);
   const mutedRef = useRef(false);
   mutedRef.current = muted;
-  const knownIds = useRef<Set<string>>(new Set());
+  const knownIds = useRef(new Set<string>());
 
   useEffect(() => {
     setMuted(localStorage.getItem("alif-muted") === "1");

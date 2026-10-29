@@ -1,0 +1,272 @@
+import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
+import { Link2, Pause, Play, RotateCw } from "lucide-react";
+import { CANVAS_FONTS, parseVideo, type CanvasEl } from "@/lib/canvas";
+import { resolveMedia } from "@/lib/letters";
+import { StickerArt } from "./stickers";
+
+export type CanvasMode = "edit" | "view" | "thumb";
+
+/** Resolves a stored media ref ("bucket/path") or passes through blob:/http URLs. */
+export function useSrc(src: string | null | undefined) {
+  const direct = src && /^(blob:|https?:|data:)/.test(src) ? src : null;
+  const [url, setUrl] = useState<string | null>(direct);
+  useEffect(() => {
+    if (direct) return setUrl(direct);
+    let on = true;
+    resolveMedia(src ?? null).then((u) => on && setUrl(u));
+    return () => { on = false; };
+  }, [src, direct]);
+  return url;
+}
+
+// Torn top and bottom edges, generated once.
+const TORN = (() => {
+  const top: string[] = [], bottom: string[] = [];
+  for (let i = 0; i <= 40; i++) {
+    const x = (i / 40) * 100;
+    top.push(`${x.toFixed(2)}% ${(0.6 + Math.abs(Math.sin(i * 2.3)) * 1.1).toFixed(2)}%`);
+    bottom.unshift(`${x.toFixed(2)}% ${(99.4 - Math.abs(Math.cos(i * 1.9)) * 1.1).toFixed(2)}%`);
+  }
+  return `polygon(${[...top, ...bottom].join(",")})`;
+})();
+
+type Props = {
+  elements: CanvasEl[];
+  mode: CanvasMode;
+  selectedId?: string | null;
+  editingId?: string | null;
+  onSelect?: (id: string | null) => void;
+  onEdit?: (id: string | null) => void;
+  onChange?: (els: CanvasEl[]) => void;
+  onGestureStart?: () => void;
+  onGestureEnd?: () => void;
+};
+
+export function LetterCanvas({ elements, mode, selectedId, editingId, onSelect, onEdit, onChange, onGestureStart, onGestureEnd }: Props) {
+  const paper = useRef<HTMLDivElement>(null);
+  const gesture = useRef<null | {
+    id: string; type: "move" | "resize" | "rotate"; px: number; py: number;
+    cx: number; cy: number; start: CanvasEl; dist: number; angle: number;
+  }>(null);
+  const editable = mode === "edit";
+  const sorted = [...elements].sort((a, b) => a.z - b.z);
+
+  const begin = (e: RPointerEvent, el: CanvasEl, type: "move" | "resize" | "rotate") => {
+    if (!editable || editingId === el.id) return;
+    e.stopPropagation();
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    const box = (e.currentTarget.closest("[data-el]") as HTMLElement).getBoundingClientRect();
+    const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+    gesture.current = {
+      id: el.id, type, px: e.clientX, py: e.clientY, cx, cy, start: el,
+      dist: Math.hypot(e.clientX - cx, e.clientY - cy) || 1,
+      angle: Math.atan2(e.clientY - cy, e.clientX - cx),
+    };
+    onSelect?.(el.id);
+    onGestureStart?.();
+  };
+
+  const move = (e: RPointerEvent) => {
+    const g = gesture.current;
+    if (!g || !paper.current || !onChange) return;
+    const rect = paper.current.getBoundingClientRect();
+    const s = g.start;
+    let next: CanvasEl = s;
+    if (g.type === "move") {
+      const dx = ((e.clientX - g.px) / rect.width) * 100, dy = ((e.clientY - g.py) / rect.height) * 100;
+      next = { ...s, x: clamp(s.x + dx, -s.w + 6, 94), y: clamp(s.y + dy, -s.h + 4, 96) };
+    } else if (g.type === "resize") {
+      const k = clamp(Math.hypot(e.clientX - g.cx, e.clientY - g.cy) / g.dist, 0.2, 6);
+      const w = clamp(s.w * k, 6, 140), h = s.h * (w / s.w);
+      next = (s.kind === "text"
+        ? { ...s, w, x: s.x + s.w / 2 - w / 2, size: clamp(s.size * (w / s.w), 1.6, 20) }
+        : { ...s, w, h, x: s.x + s.w / 2 - w / 2, y: s.y + s.h / 2 - h / 2 }) as CanvasEl;
+    } else {
+      let r = s.r + ((Math.atan2(e.clientY - g.cy, e.clientX - g.cx) - g.angle) * 180) / Math.PI;
+      r = ((r + 540) % 360) - 180;
+      if (Math.abs(r) < 3) r = 0; // snap straight
+      next = { ...s, r };
+    }
+    onChange(elements.map((x) => (x.id === g.id ? next : x)));
+  };
+
+  const end = () => {
+    if (!gesture.current) return;
+    gesture.current = null;
+    onGestureEnd?.();
+  };
+
+  return (
+    <div className="relative w-full" style={{ filter: mode === "thumb" ? "drop-shadow(0 2px 3px rgb(40 25 10 / .3))" : "drop-shadow(0 10px 24px rgb(40 25 10 / .25))" }}>
+      <div
+        ref={paper}
+        onPointerMove={editable ? move : undefined}
+        onPointerUp={editable ? end : undefined}
+        onPointerCancel={editable ? end : undefined}
+        onPointerDown={editable ? () => { onSelect?.(null); onEdit?.(null); } : undefined}
+        // In the editor, elements may hang off the edge so their handles stay reachable.
+        className={`relative aspect-[3/4] w-full select-none ${editable ? "" : "overflow-hidden"}`}
+        style={{ containerType: "inline-size", touchAction: editable ? "none" : undefined }}
+      >
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-[#fdfcf9]"
+          style={{
+            clipPath: TORN,
+            backgroundImage: "linear-gradient(to bottom, transparent 96%, rgb(90 130 190 / .16) 96%)",
+            backgroundSize: "100% 3.6%",
+          }}
+        />
+        {sorted.map((el) => {
+          const selected = editable && selectedId === el.id;
+          return (
+            <div
+              key={el.id}
+              data-el
+              onPointerDown={(e) => begin(e, el, "move")}
+              onDoubleClick={() => editable && el.kind === "text" && onEdit?.(el.id)}
+              className={`absolute ${editable ? "cursor-move" : ""}`}
+              style={{
+                left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`,
+                height: el.kind === "text" ? "auto" : `${el.h}%`,
+                transform: `rotate(${el.r}deg)`,
+                zIndex: el.z,
+              }}
+            >
+              <ElementView el={el} mode={mode} editing={editingId === el.id} onText={(text) => onChange?.(elements.map((x) => (x.id === el.id ? { ...x, text } as CanvasEl : x)))} onDoneEditing={() => onEdit?.(null)} />
+              {selected && (
+                <>
+                  <div className="pointer-events-none absolute -inset-1 border-[1.5px] border-[#3b82f6]" />
+                  <button
+                    aria-label="rotate"
+                    onPointerDown={(e) => begin(e, el, "rotate")}
+                    className="absolute -top-11 left-1/2 grid h-8 w-8 -translate-x-1/2 cursor-grab place-items-center rounded-full border border-black/10 bg-white text-ink shadow-md"
+                  >
+                    <RotateCw className="h-4 w-4" />
+                  </button>
+                  <button
+                    aria-label="resize"
+                    onPointerDown={(e) => begin(e, el, "resize")}
+                    className="absolute -bottom-3 -right-3 h-6 w-6 cursor-nwse-resize rounded-full border-2 border-[#3b82f6] bg-white shadow"
+                  />
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+
+export function fontCls(id: string) {
+  return CANVAS_FONTS.find((f) => f.id === id)?.cls ?? "font-hand";
+}
+
+function ElementView({ el, mode, editing, onText, onDoneEditing }: {
+  el: CanvasEl; mode: CanvasMode; editing: boolean; onText: (t: string) => void; onDoneEditing: () => void;
+}) {
+  const live = mode === "view";
+  switch (el.kind) {
+    case "text": {
+      const style = {
+        color: el.color, fontSize: `${el.size}cqw`, lineHeight: 1.25,
+        background: el.bg ?? "transparent", padding: el.bg ? "0.25em 0.5em" : "0.1em 0.15em", borderRadius: el.bg ? "0.3em" : 0,
+      };
+      return editing ? (
+        <textarea
+          autoFocus
+          value={el.text}
+          maxLength={1000}
+          placeholder="write something…"
+          onChange={(e) => onText(e.target.value)}
+          onBlur={onDoneEditing}
+          onPointerDown={(e) => e.stopPropagation()}
+          rows={Math.max(1, el.text.split("\n").length)}
+          className={`${fontCls(el.font)} block w-full resize-none overflow-hidden border-0 outline-none`}
+          style={style}
+        />
+      ) : (
+        <div className={`${fontCls(el.font)} whitespace-pre-wrap break-words`} style={style}>{el.text || " "}</div>
+      );
+    }
+    case "link": {
+      const inner = (
+        <span className="flex h-full w-full items-center justify-center gap-[0.4em] overflow-hidden rounded-[0.5em] bg-[#2b2b2b] px-[0.6em] font-clean font-medium text-white" style={{ fontSize: "2.6cqw" }}>
+          <Link2 className="h-[1.1em] w-[1.1em] shrink-0" />
+          <span className="truncate">{el.label || el.url.replace(/^https?:\/\//, "")}</span>
+        </span>
+      );
+      return live ? (
+        <a href={el.url} target="_blank" rel="noopener noreferrer nofollow" className="block h-full w-full">{inner}</a>
+      ) : inner;
+    }
+    case "image":
+      return <ImageView src={el.src} />;
+    case "audio":
+      return <AudioView src={el.src} name={el.name} live={live} />;
+    case "video":
+      return <VideoView url={el.url} live={live} />;
+    case "sticker":
+      return <StickerView name={el.name} photo={el.photo} />;
+  }
+}
+
+function ImageView({ src }: { src: string }) {
+  const url = useSrc(src);
+  return url ? <img src={url} alt="" draggable={false} className="h-full w-full object-cover shadow-sm" /> : <div className="h-full w-full animate-pulse bg-ink/10" />;
+}
+
+function StickerView({ name, photo }: { name: Parameters<typeof StickerArt>[0]["name"]; photo?: string | null }) {
+  const url = useSrc(photo);
+  return <div className="relative h-full w-full"><StickerArt name={name} photo={url} /></div>;
+}
+
+function AudioView({ src, name, live }: { src: string; name: string; live: boolean }) {
+  const url = useSrc(src);
+  const ref = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  return (
+    <div className="flex h-full w-full items-center gap-[4%] rounded-full bg-[#6e6e6e] px-[5%] text-white shadow-sm" style={{ fontSize: "2.4cqw" }}>
+      <button
+        type="button"
+        aria-label={playing ? "pause" : "play"}
+        disabled={!live || !url}
+        onPointerDown={(e) => live && e.stopPropagation()}
+        onClick={() => { const a = ref.current; if (!a) return; if (a.paused) void a.play(); else a.pause(); }}
+        className="grid aspect-square h-[70%] shrink-0 place-items-center rounded-full bg-white text-[#3a3a3a] disabled:cursor-default"
+      >
+        {playing ? <Pause className="h-[45%] w-[45%]" /> : <Play className="ml-[8%] h-[45%] w-[45%]" />}
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-clean">{name || "voice note"}</div>
+        <div className="mt-[3%] h-[0.35em] w-full rounded-full bg-white/30"><div className="h-full rounded-full bg-white" style={{ width: `${progress}%` }} /></div>
+      </div>
+      {live && url && (
+        <audio
+          ref={ref} src={url} preload="metadata"
+          onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setProgress(0); }}
+          onTimeUpdate={(e) => { const a = e.currentTarget; setProgress(a.duration ? (a.currentTime / a.duration) * 100 : 0); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function VideoView({ url, live }: { url: string; live: boolean }) {
+  const v = parseVideo(url);
+  if (live && v?.type === "iframe")
+    return <iframe src={v.src} title="video" className="h-full w-full rounded-[2%] bg-black" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen loading="lazy" />;
+  if (live && v?.type === "file")
+    return <video src={v.src} controls playsInline className="h-full w-full rounded-[2%] bg-black object-contain" />;
+  return (
+    <div className="relative grid h-full w-full place-items-center overflow-hidden rounded-[2%] bg-[#1b1b1b]">
+      {v?.thumb && <img src={v.thumb} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover opacity-90" />}
+      <span className="relative grid aspect-square w-[22%] place-items-center rounded-full bg-white/90 text-ink shadow"><Play className="ml-[8%] h-1/2 w-1/2" /></span>
+      {!v && <span className="absolute inset-x-[6%] bottom-[6%] truncate text-center font-clean text-white/80" style={{ fontSize: "2cqw" }}>{url}</span>}
+    </div>
+  );
+}
