@@ -294,3 +294,11 @@
     }
   }
 }
+
+@layer components {
+  /* Cork cut from Alif's collage, tiled so the board can keep growing below it */
+  .cork-photo {
+    background: url("/board/cork-tile.webp") 0 0 / 28.07% auto repeat, #8f633f;
+    box-shadow: inset 0 0 24px rgb(60 30 10 / 0.45), inset 0 2px 4px rgb(0 0 0 / 0.3);
+  }
+}

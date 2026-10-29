@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { GRID_ROWS, boardRows, playThunk, type Letter } from "@/lib/letters";
+import { GRID_ROWS, MIN_ROWS, boardRows, playThunk, type Letter } from "@/lib/letters";
 import { ease, spring } from "@/lib/motion";
 import { FIGURES } from "@/lib/figures";
 import { BoardItem, Pin } from "@/components/letters/BoardItem";
@@ -100,9 +100,21 @@ function Room() {
         <div className="overflow-x-auto px-4 pb-4 sm:px-0">
           <div className="relative mx-auto w-[900px] max-w-none sm:w-[80%] sm:min-w-[640px]">
             <div className="frame rounded-md p-[2.2%]">
-              <div className="cork relative w-full overflow-hidden rounded-sm" style={{ aspectRatio: `16 / ${10 * pages}` }}>
+              <div className="cork-photo relative w-full overflow-hidden rounded-sm">
+                {/* Alif's collage is the top of the board; letters pin onto the cork below it. */}
+                <img
+                  src="/board/base.webp"
+                  alt="Alif's byebye collage: photos of Alif, a photo booth strip, a pig keychain, rock and Arsenal stickers"
+                  width={2400}
+                  height={1295}
+                  fetchPriority="high"
+                  draggable={false}
+                  className="relative block h-auto w-full select-none"
+                  style={{ maskImage: "linear-gradient(to bottom, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 95%, transparent)" }}
+                />
+                <div className="relative w-full" style={{ aspectRatio: `16 / ${10 * pages}` }}>
                 {/* decorative pins + sticky note — only while the board is still mostly empty */}
-                {letters.length < 6 && rows === GRID_ROWS && (
+                {letters.length < 6 && rows === MIN_ROWS && (
                   <>
                     <span className="absolute left-[30%] top-[8%]"><Pin color="#9CC9E8" /></span>
                     <span className="absolute left-[64%] top-[86%]"><Pin color="#F6E27A" /></span>
@@ -116,6 +128,7 @@ function Room() {
                 {letters.map((l, i) => (
                   <BoardItem key={l.id} letter={l} index={i} pages={pages} isNew={newIds.has(l.id)} onOpen={(rect) => setOpen({ letter: l, rect })} />
                 ))}
+              </div>
               </div>
             </div>
           </div>

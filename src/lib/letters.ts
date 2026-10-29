@@ -55,18 +55,21 @@ export function getBrowserId() {
 }
 
 /**
- * Board layout. The board is GRID_COLS wide and grows downward one row at a time.
+ * Board layout. Letters pin onto the cork below the collage artwork. That area is
+ * GRID_COLS wide and grows downward one row at a time, starting at MIN_ROWS.
  * board_x is % of board width; board_y is % of ONE base page (16:10, GRID_ROWS rows),
  * so values above 100 mean the letter sits on an added row further down.
  */
 export const GRID_COLS = 7;
 export const GRID_ROWS = 4;
 export const ROW_H = 100 / GRID_ROWS;
+/** The cork under the collage starts this many rows tall, then grows. */
+export const MIN_ROWS = 2;
 
 /** Rows the board needs to show every letter (never fewer than one base page). */
 export function boardRows(ls: { board_y: number }[]) {
   const lastRow = ls.reduce((m, l) => Math.max(m, Math.floor(l.board_y / ROW_H)), 0);
-  return Math.max(GRID_ROWS, lastRow + 1);
+  return Math.max(MIN_ROWS, lastRow + 1);
 }
 
 /** Picks the top-most free slot; adds a new row only when every slot is taken. */
