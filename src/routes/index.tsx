@@ -73,15 +73,13 @@ function Room() {
   return (
     <MotionConfig reducedMotion="user">
     <main className="wall relative min-h-screen overflow-x-hidden pb-28">
-      <header className="relative z-10 px-6 pt-6 sm:px-10 sm:pt-8">
-        <h1 className="-rotate-3 font-title font-bold text-6xl leading-none text-ink sm:text-7xl">for alif ♡</h1>
-        <p className="ml-2 mt-1 -rotate-1 font-hand text-xl text-ink/70">{letters.length} {letters.length === 1 ? "letter" : "letters"} pinned</p>
-      </header>
+      {/* the collage carries the title; keep a heading for screen readers */}
+      <h1 className="sr-only">Letters for Alif — {letters.length} {letters.length === 1 ? "letter" : "letters"} pinned</h1>
       <button onClick={() => { setMuted(!muted); localStorage.setItem("alif-muted", muted ? "0" : "1"); }} aria-label={muted ? "unmute" : "mute"} className="absolute right-4 top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-card/80 text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95">
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
 
-      <section className="relative mx-auto mt-6 w-full sm:mt-4">
+      <section className="relative mx-auto mt-20 w-full md:mt-[max(6rem,9vw)]">
         {FIGURES.map((f, i) => (
           // Static wrapper anchors the figure by its base; the image inside does the motion.
           <div

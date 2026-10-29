@@ -188,7 +188,7 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
         onClick={onOpen}
         disabled={!sealed}
         aria-label="break the seal and open the letter"
-        className="absolute left-1/2 top-[57.5%] w-[19%] -translate-x-1/2 -translate-y-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-transparent disabled:cursor-default"
+        className="absolute left-1/2 top-[57.5%] w-[22%] -translate-x-1/2 -translate-y-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-transparent disabled:cursor-default"
         style={{ zIndex: 6 }}
       >
         <WaxSeal stage={stage} />
@@ -197,35 +197,11 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
   );
 }
 
-const SEAL_EDGE = (() => {
-  // irregular, slightly lumpy wax outline
-  const pts: string[] = [];
-  for (let i = 0; i < 36; i++) {
-    const a = (i / 36) * Math.PI * 2;
-    const r = 46 + Math.sin(i * 2.7) * 2.2 + Math.cos(i * 1.3) * 1.6;
-    pts.push(`${(50 + Math.cos(a) * r).toFixed(1)},${(50 + Math.sin(a) * r).toFixed(1)}`);
-  }
-  return `M${pts.join(" L")} Z`;
-})();
-
 function WaxSeal({ stage }: { stage: Stage }) {
   const broken = stage !== "sealed";
   const face = (
-    <svg viewBox="0 0 100 100" className="block w-full overflow-visible" aria-hidden>
-      <defs>
-        <radialGradient id="wax" cx="38%" cy="32%" r="75%">
-          <stop offset="0" stopColor="#f3d488" />
-          <stop offset=".45" stopColor="#c9963c" />
-          <stop offset="1" stopColor="#7d561c" />
-        </radialGradient>
-      </defs>
-      <path d={SEAL_EDGE} fill="url(#wax)" style={{ filter: "drop-shadow(0 3px 3px rgb(40 20 0 / .45))" }} />
-      <circle cx="50" cy="50" r="31" fill="none" stroke="#7d561c" strokeOpacity=".55" strokeWidth="2.2" />
-      <circle cx="50" cy="50" r="31" fill="none" stroke="#fbe7ad" strokeOpacity=".5" strokeWidth="1" transform="translate(-.8 -.8)" />
-      {/* embossed heart: dark recess plus a light catch on the upper edge */}
-      <path d="M50 66 C36 56 31 47 36 40 C40 35 47 36 50 42 C53 36 60 35 64 40 C69 47 64 56 50 66 Z" fill="#a8792c" stroke="#6e4a16" strokeWidth="1.6" />
-      <path d="M50 66 C36 56 31 47 36 40 C40 35 47 36 50 42" fill="none" stroke="#fbe7ad" strokeOpacity=".7" strokeWidth="1" transform="translate(-.6 -.8)" />
-    </svg>
+    <img src="/board/seal.webp" alt="" width={480} height={475} draggable={false}
+      className="block w-full select-none" style={{ filter: "drop-shadow(0 4px 4px rgb(40 0 0 / .4))" }} />
   );
   if (!broken) {
     return (
