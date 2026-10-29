@@ -11,7 +11,7 @@ async function checkPassword(input: string) {
   ]);
   const x = new Uint8Array(a), y = new Uint8Array(b);
   let diff = 0;
-  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  for (let i = 0; i < x.length; i++) diff |= x[i]! ^ y[i]!;
   return diff === 0;
 }
 
