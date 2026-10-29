@@ -11,8 +11,17 @@ import { BoardIntro } from "@/components/letters/BoardIntro";
 
 // The editor and the opener are only needed after a tap, so they load on demand
 // (and are prefetched on hover / once the intro is done).
-const loadOpen = () => import("@/components/letters/LetterOpen");
-const loadStudio = () => import("@/components/letters/LetterStudio");
+/** Retry once, then reload: after a new deploy, an open tab may ask for a chunk that no longer exists. */
+function chunk<T>(load: () => Promise<T>) {
+  return () => load().catch(() => load()).catch((err) => {
+    let reloaded = false;
+    try { reloaded = sessionStorage.getItem("alif-chunk-reload") === "1"; sessionStorage.setItem("alif-chunk-reload", "1"); } catch { /* storage blocked */ }
+    if (!reloaded) window.location.reload();
+    throw err;
+  });
+}
+const loadOpen = chunk(() => import("@/components/letters/LetterOpen"));
+const loadStudio = chunk(() => import("@/components/letters/LetterStudio"));
 const LetterOpen = lazy(() => loadOpen().then((m) => ({ default: m.LetterOpen })));
 const LetterStudio = lazy(() => loadStudio().then((m) => ({ default: m.LetterStudio })));
 
@@ -64,6 +73,7 @@ function Room() {
   const [board, animateBoard] = useAnimate();
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntro(false);
+    try { sessionStorage.removeItem("alif-chunk-reload"); } catch { /* storage blocked */ }
   }, []);
   const stamp = () => {
     if (board.current) void animateBoard(board.current, { x: [0, -12, 10, -7, 4, -2, 0], y: [0, 6, -4, 3, -1, 0] }, { duration: 0.45, ease: "easeOut" });

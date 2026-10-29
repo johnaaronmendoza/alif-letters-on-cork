@@ -258,27 +258,33 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
         <header className="flex items-center gap-2 border-b border-black/10 px-3 py-2 sm:px-5 sm:py-3">
           <IconBtn label="back" onClick={requestClose}><ArrowLeft className="h-5 w-5" /></IconBtn>
           <div className="min-w-0 flex-1">
-            {/* name tag: who the letter is from */}
+            {/* who the letter is from: signed on a dashed line, like a form */}
             <motion.label
               key={nameNudge}
               animate={nameNudge ? { x: [0, -8, 7, -5, 3, 0] } : {}}
               transition={{ duration: 0.4 }}
-              className={`group relative flex w-full max-w-sm min-h-11 cursor-text items-center gap-2 rounded-xl border-2 px-3 transition-colors duration-200 focus-within:border-[#4a4541] focus-within:bg-white ${from.trim() ? "border-transparent bg-[#f6e7a6]/60" : "border-dashed border-[#d9b84a] bg-[#f6e7a6]"}`}
+              className="group relative flex w-full max-w-sm min-h-11 cursor-text items-end gap-2.5 pb-1"
             >
-              {!from.trim() && (
-                // soft pulse while empty, so it's hard to miss
-                <motion.span aria-hidden className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-[#e6c84f]"
-                  animate={{ opacity: [0, 0.9, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }} />
-              )}
-              <Pencil className="h-4 w-4 shrink-0 text-ink/60" aria-hidden />
-              <span className="shrink-0 font-typewriter text-sm uppercase tracking-[0.12em] text-ink/70">from</span>
-              <input
-                ref={fromInput}
-                value={from} onChange={(e) => setFrom(e.target.value)} maxLength={60}
-                placeholder="your name"
-                aria-label="who is this letter from? your name"
-                className="min-w-0 flex-1 bg-transparent font-hand text-xl text-ink outline-none placeholder:text-ink/40 sm:text-2xl"
-              />
+              <span className="shrink-0 pb-1 font-typewriter text-xs uppercase tracking-[0.16em] text-ink/60">from</span>
+              <span className="relative flex min-w-0 flex-1 items-end">
+                <input
+                  ref={fromInput}
+                  value={from} onChange={(e) => setFrom(e.target.value)} maxLength={60}
+                  placeholder="sign your name"
+                  aria-label="who is this letter from? your name"
+                  className="min-w-0 flex-1 bg-transparent pb-0.5 font-hand text-2xl leading-none text-ink outline-none placeholder:text-ink/35"
+                />
+                <Pencil className="mb-1.5 h-4 w-4 shrink-0 text-ink/40 transition-opacity group-focus-within:opacity-0" aria-hidden />
+                {/* the line you sign on: dashed when empty, solid once signed or focused */}
+                <span className={`pointer-events-none absolute inset-x-0 -bottom-0.5 border-b-2 transition-colors duration-200 group-focus-within:border-solid group-focus-within:border-ink/70 ${from.trim() ? "border-solid border-ink/25" : "border-dashed border-ink/35"}`} />
+                {!from.trim() && (
+                  // a soft stroke glides along the empty line now and then, to draw the eye
+                  <span className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 overflow-hidden">
+                    <motion.span className="block h-full w-1/3 bg-gradient-to-r from-transparent via-ink/70 to-transparent"
+                      animate={{ x: ["-100%", "300%"] }} transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }} />
+                  </span>
+                )}
+              </span>
             </motion.label>
           </div>
           <IconBtn label="undo" onClick={undo} disabled={!canUndo}><Undo2 className="h-5 w-5" /></IconBtn>
