@@ -16,6 +16,6 @@ export const FIGURES: Figure[] = [
   // one on each corner, hanging slightly off the frame
   { src: "/figures/money-gun.webp", alt: "a money gun spraying cash", x: -3, y: "10cqw", w: 9, rotation: -10, toy: "money-gun" },
   { src: "/figures/cigarettes.webp", alt: "a pack of Gudang Garam with a lighter", x: 102.5, y: "12cqw", w: 10, rotation: 8, toy: "lighter" },
-  { src: "/figures/doll.webp", alt: "a little doll figure", x: -3.5, y: "calc(100% + 0.5cqw)", w: 9, rotation: -3, toy: "doll" },
+  { src: "/figures/doll-eyeless.webp", alt: "a little doll figure", x: -3.5, y: "calc(100% + 0.5cqw)", w: 9, rotation: -3, toy: "doll" },
   { src: "/figures/mints.webp", alt: "a tin of Eclipse mints", x: 102.5, y: "calc(100% + 0.5cqw)", w: 9, rotation: -8, toy: "mints" },
 ];

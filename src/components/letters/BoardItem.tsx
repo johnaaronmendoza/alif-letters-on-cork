@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Lock } from "lucide-react";
 import { PIN_ORIGIN, ease, spring } from "@/lib/motion";
 import { ENVELOPE_GEOM, envelopeFor, isLocked, type BoardSpot, type EnvelopeColor, type Letter } from "@/lib/letters";
@@ -54,7 +54,7 @@ export function BoardItem({
       // in the phone grid, every other column sits a little lower, so it reads as pinned, not tiled
       style={flow ? { marginTop: index % 2 ? "1.6rem" : 0 } : { left: `${spot.x}%`, top: `${(spot.y / boardHeight) * 100}%`, width: "11%", minWidth: 88 }}
     >
-      <motion.button
+      <m.button
         id={`letter-${letter.id}`}
         onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
         onPointerEnter={onPrefetch}
@@ -91,7 +91,7 @@ export function BoardItem({
         {locked && (
           <span className="absolute -bottom-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-ink text-cream shadow-item"><Lock className="h-3.5 w-3.5" /></span>
         )}
-      </motion.button>
+      </m.button>
     </div>
   );
 }

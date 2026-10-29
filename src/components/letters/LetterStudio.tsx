@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useDialogFocus } from "@/lib/focus";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import {
   ArrowLeft, Check, ChevronLeft, CirclePlus, ImagePlus, Pin, ChevronRight, Copy, Eye, EyeOff, ImageIcon, Layers, Link2, Maximize, Mic, Minus, Pencil,
   Plus, Redo2, RotateCw, Square, Trash2, Type, Undo2, Upload, Video, X,
@@ -113,7 +113,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
 
   const patch = (id: string, p: Partial<CanvasEl>) => commit(elsRef.current.map((e) => (e.id === id ? ({ ...e, ...p } as CanvasEl) : e)));
   const remove = (id: string) => { commit(elsRef.current.filter((e) => e.id !== id)); setSelected(null); setEditing(null); };
-  const topZ = () => elsRef.current.reduce((m, e) => Math.max(m, e.z), 0) + 1;
+  const topZ = () => elsRef.current.reduce((top, e) => Math.max(top, e.z), 0) + 1;
 
   const add = (el: NewEl) => {
     const n = elsRef.current.length;
@@ -195,10 +195,10 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
     return { blob, aspect: h / w, rounded: !transparent };
   };
 
-  const placeSticker = (m: { url: string; blob: Blob; aspect: number; rounded: boolean }) => {
-    const w = m.aspect > 1.3 ? 20 : 26;
-    const id = add({ kind: "image", src: m.url, sticker: true, rounded: m.rounded, w, h: heightFor(w, m.aspect), r: Math.round(Math.random() * 10 - 5) });
-    files.current.set(`${id}:src`, m.blob);
+  const placeSticker = (made: { url: string; blob: Blob; aspect: number; rounded: boolean }) => {
+    const w = made.aspect > 1.3 ? 20 : 26;
+    const id = add({ kind: "image", src: made.url, sticker: true, rounded: made.rounded, w, h: heightFor(w, made.aspect), r: Math.round(Math.random() * 10 - 5) });
+    files.current.set(`${id}:src`, made.blob);
   };
 
   const makeSticker = async (file: File) => {
@@ -317,13 +317,13 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
   const canUndo = past.current.length > 0, canRedo = future.current.length > 0;
 
   return (
-    <motion.div
+    <m.div
       className="fixed inset-0 z-50 flex bg-ink/50 backdrop-blur-sm sm:p-4"
       initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.25, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }}
       role="dialog" aria-modal="true" aria-label="write a letter"
       ref={focusRoot} tabIndex={-1}
     >
-      <motion.div
+      <m.div
         style={{ transformOrigin: "100% 100%" }}
         initial={{ opacity: 0, y: 40, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1, transition: { ...spring.soft, opacity: { duration: 0.2 } } }}
@@ -335,7 +335,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
           <IconBtn label="back" onClick={requestClose}><ArrowLeft className="h-5 w-5" /></IconBtn>
           <div className="order-last min-w-0 basis-full px-1 sm:order-none sm:basis-auto sm:flex-1 sm:px-0">
             {/* who the letter is from: signed on a dashed line, like a form */}
-            <motion.label
+            <m.label
               key={nameNudge}
               animate={nameNudge ? { x: [0, -8, 7, -5, 3, 0] } : {}}
               transition={{ duration: 0.4 }}
@@ -356,12 +356,12 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
                 {!from.trim() && (
                   // a soft stroke glides along the empty line now and then, to draw the eye
                   <span className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 overflow-hidden">
-                    <motion.span className="block h-full w-1/3 bg-gradient-to-r from-transparent via-ink/70 to-transparent"
+                    <m.span className="block h-full w-1/3 bg-gradient-to-r from-transparent via-ink/70 to-transparent"
                       animate={{ x: ["-100%", "300%"] }} transition={{ duration: 1.6, repeat: 3, repeatDelay: 2.4, ease: "easeInOut" }} />
                   </span>
                 )}
               </span>
-            </motion.label>
+            </m.label>
           </div>
           <IconBtn label="undo" className="ml-auto sm:ml-0" onClick={undo} disabled={!canUndo}><Undo2 className="h-5 w-5" /></IconBtn>
           <IconBtn label="redo" onClick={redo} disabled={!canRedo}><Redo2 className="h-5 w-5" /></IconBtn>
@@ -421,17 +421,17 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
                     <ImagePlus className="h-5 w-5" strokeWidth={1.6} aria-hidden />
                     make your own
                   </button>
-                  {mine.map((m) => (
-                    <button key={m.url} onClick={() => placeSticker(m)} aria-label="add your sticker again" title="add again"
+                  {mine.map((made) => (
+                    <button key={made.url} onClick={() => placeSticker(made)} aria-label="add your sticker again" title="add again"
                       className="grid h-16 w-16 shrink-0 place-items-center rounded-lg p-1.5 transition-transform hover:scale-105 hover:bg-black/5 active:scale-95">
-                      <img src={m.url} alt="" draggable={false}
-                        className={`max-h-full max-w-full object-contain ${m.rounded ? "rounded-md" : ""}`}
+                      <img src={made.url} alt="" draggable={false}
+                        className={`max-h-full max-w-full object-contain ${made.rounded ? "rounded-md" : ""}`}
                         style={{ filter: "drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)" }} />
                     </button>
                   ))}
                 </div>
                 <AnimatePresence mode="wait" initial={false}>
-                  <motion.div key={page} className="grid grid-cols-3 gap-2"
+                  <m.div key={page} className="grid grid-cols-3 gap-2"
                     initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10, transition: fadeOut }} transition={{ duration: 0.2, ease: ease.out }}>
                     {STICKER_PAGES[page]!.map((name) => (
                       <button key={name} onClick={() => addSticker(name)} aria-label={`add ${stickerLabel(name)} sticker`} title={stickerLabel(name)}
@@ -439,7 +439,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
                         <img src={stickerSrc(name) ?? ""} alt="" draggable={false} loading="lazy" className="max-h-full max-w-full select-none object-contain" />
                       </button>
                     ))}
-                  </motion.div>
+                  </m.div>
                 </AnimatePresence>
               </Section>
               </div>
@@ -453,7 +453,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
               }>
                 <AnimatePresence initial={false}>
                   {photocard && (
-                    <motion.div key="drop" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0, transition: fadeOut }} transition={{ duration: 0.25, ease: ease.out }} className="overflow-hidden">
+                    <m.div key="drop" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0, transition: fadeOut }} transition={{ duration: 0.25, ease: ease.out }} className="overflow-hidden">
                       {cardSrc ? (
                         <div className="flex items-center gap-3 rounded-xl border border-black/10 bg-white p-2.5">
                           <img src={cardSrc} alt="photocard" className="h-16 w-14 rounded object-cover shadow-sm" />
@@ -469,7 +469,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
                           <span className="font-typewriter text-sm uppercase tracking-[0.12em]">add image</span>
                         </button>
                       )}
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
                 {!photocard && <p className="-mt-1 text-xs text-ink/70">tuck a printed photo in with your letter</p>}
@@ -532,7 +532,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
                 }}
                 onRotate={() => patch(sel.id, { r: ((sel.r + 15 + 540) % 360) - 180 })}
                 onFront={() => patch(sel.id, { z: topZ() })}
-                onBack={() => patch(sel.id, { z: elsRef.current.reduce((m, e) => Math.min(m, e.z), 0) - 1 })}
+                onBack={() => patch(sel.id, { z: elsRef.current.reduce((low, e) => Math.min(low, e.z), 0) - 1 })}
                 onDuplicate={() => duplicate(sel)}
                 onDelete={() => remove(sel.id)}
               />
@@ -555,7 +555,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
                 />
                 <AnimatePresence>
                   {photocard && (
-                    <motion.button
+                    <m.button
                       key="card"
                       type="button"
                       aria-label={cardSrc ? "replace photocard image" : "add photocard image"}
@@ -569,7 +569,7 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
                       className="absolute -right-[16%] top-[48%] z-20 w-[40%] cursor-pointer"
                     >
                       <Photocard src={cardSrc} prompt={!preview} />
-                    </motion.button>
+                    </m.button>
                   )}
                 </AnimatePresence>
                 </div>
@@ -628,8 +628,8 @@ export function LetterStudio({ letters, guardRef, onClose, onPinned }: {
             />
           )}
         </AnimatePresence>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }
 
@@ -686,7 +686,7 @@ function Toolbar({ el, palette, setPalette, onPatch, onEdit, onScale, onRotate, 
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center px-3">
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy}
       className="paper-card pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-xl p-1.5"
       onPointerDown={(e) => e.stopPropagation()}
@@ -726,7 +726,7 @@ function Toolbar({ el, palette, setPalette, onPatch, onEdit, onScale, onRotate, 
       <IconBtn label="rotate" onClick={onRotate}><RotateCw className="h-5 w-5" /></IconBtn>
       <IconBtn label="duplicate" onClick={onDuplicate}><Copy className="h-5 w-5" /></IconBtn>
       <IconBtn label="delete" onClick={onDelete}><Trash2 className="h-5 w-5" /></IconBtn>
-    </motion.div>
+    </m.div>
     </div>
   );
 }
@@ -813,9 +813,9 @@ function AddDialog({ dialog, current, onClose, onLink, onVideo, onAudio }: {
   const title = kind === "link" ? "add a link" : kind === "video" ? "add a video link" : "add audio";
 
   return (
-    <motion.div className="absolute inset-0 z-50 grid place-items-center bg-ink/40 p-4"
+    <m.div className="absolute inset-0 z-50 grid place-items-center bg-ink/40 p-4"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: fadeOut }} onClick={onClose}>
-      <motion.div
+      <m.div
         onClick={(e) => e.stopPropagation()}
         initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.soft }} exit={{ opacity: 0, y: 8, transition: fadeOut }}
         className="paper-card w-full max-w-sm rounded-md p-5"
@@ -868,7 +868,7 @@ function AddDialog({ dialog, current, onClose, onLink, onVideo, onAudio }: {
             </button>
           </form>
         )}
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }

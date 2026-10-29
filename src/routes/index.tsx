@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, MotionConfig, motion, useAnimate } from "framer-motion";
+import { AnimatePresence, MotionConfig, m, useAnimate, LazyMotion, domAnimation } from "framer-motion";
 import { Mail, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,8 +23,8 @@ function chunk<T>(load: () => Promise<T>) {
 }
 const loadOpen = chunk(() => import("@/components/letters/LetterOpen"));
 const loadStudio = chunk(() => import("@/components/letters/LetterStudio"));
-const LetterOpen = lazy(() => loadOpen().then((m) => ({ default: m.LetterOpen })));
-const LetterStudio = lazy(() => loadStudio().then((m) => ({ default: m.LetterStudio })));
+const LetterOpen = lazy(() => loadOpen().then((mod) => ({ default: mod.LetterOpen })));
+const LetterStudio = lazy(() => loadStudio().then((mod) => ({ default: mod.LetterStudio })));
 
 /** Warm up everything opening this letter needs: the opener code and its envelope layers. */
 const warmed = new Set<string>();
@@ -37,6 +37,8 @@ function prefetchOpen(envelope: string) {
     img.src = src;
   }
 }
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,6 +57,8 @@ export const Route = createFileRoute("/")({
     links: [
       // the intro's first frame: fetched before the (hidden-for-now) collage
       { rel: "preload", as: "image", href: "/board/intro/empty.webp", fetchPriority: "high" },
+      // open the connection to the letters database while the page is still loading
+      ...(SUPABASE_URL ? [{ rel: "preconnect", href: SUPABASE_URL, crossOrigin: "anonymous" as const }] : []),
     ],
   }),
   // ?letter=<id> opens that letter (shareable); ?write=1 is the editor. Both make the
@@ -230,6 +234,8 @@ function Room() {
   const extended = height > 100;
 
   return (
+    // only the animation features this site uses (no drag/layout), loaded with the page
+    <LazyMotion features={domAnimation}>
     <MotionConfig reducedMotion="user">
     <main className="wall relative min-h-screen overflow-x-hidden pb-28">
       {/* the collage carries the title; keep a heading for screen readers */}
@@ -268,13 +274,13 @@ function Room() {
             </div>
             {!intro && <BoardFigures muted={muted} layout="shelf" />}
             {!intro && (letters.length === 0 ? (
-              <motion.p
+              <m.p
                 initial={{ opacity: 0, y: -8, rotate: -5 }} animate={{ opacity: 1, y: 0, rotate: -3 }} transition={{ delay: 0.6, ...spring.soft }}
                 className="relative mx-auto mb-10 mt-6 w-fit bg-[#f8f4ea] px-4 py-2 text-center font-typewriter text-sm leading-snug text-ink shadow-[0_2px_4px_rgb(0_0_0/.2),0_8px_14px_-6px_rgb(0_0_0/.3)]"
               >
                 <span className="absolute -top-2 left-1/2 h-3.5 w-12 -translate-x-1/2 rotate-2 bg-tape/80" />
                 no letters yet —<br />be the first to pin one ✉
-              </motion.p>
+              </m.p>
             ) : (
               <div className="grid grid-cols-2 gap-x-[6%] gap-y-7 px-[6%] pb-12 pt-6">
                 {ordered.map((l, i) => (
@@ -316,13 +322,13 @@ function Room() {
                 />
                 {intro && <BoardIntro onStamp={stamp} onImpact={nudge} onDone={introDone} />}
                 {!intro && letters.length === 0 && (
-                  <motion.div
+                  <m.div
                     initial={{ opacity: 0, y: -10, rotate: -6 }} animate={{ opacity: 1, y: 0, rotate: -4 }} transition={{ delay: 0.6, ...spring.soft }}
                     className="absolute left-[3%] top-[5%] z-10 w-[18%] min-w-[120px] bg-[#f8f4ea] px-[1.2%] py-[1%] text-center font-typewriter text-[clamp(10px,1vw,14px)] leading-snug text-ink shadow-[0_2px_4px_rgb(0_0_0/.2),0_8px_14px_-6px_rgb(0_0_0/.3)]"
                   >
                     <span className="absolute -top-[0.6em] left-1/2 h-[1.2em] w-[45%] -translate-x-1/2 rotate-2 bg-tape/80" />
                     no letters yet —<br />be the first to pin one ✉
-                  </motion.div>
+                  </m.div>
                 )}
                 {!intro && letters.map((l, i) => {
                   const spot = spots.get(l.id);
@@ -338,7 +344,7 @@ function Room() {
       )}
 
       {!intro && (
-      <motion.button
+      <m.button
         onClick={openStudio}
         onPointerEnter={() => void loadStudio()}
         onFocus={() => void loadStudio()}
@@ -355,7 +361,7 @@ function Room() {
         whileTap={{ scale: 0.96, transition: spring.snappy }}
       >
         <Mail className="-mt-1 mr-2 inline h-5 w-5" strokeWidth={1.75} aria-hidden />write alif a letter
-      </motion.button>
+      </m.button>
       )}
 
       <AnimatePresence>
@@ -384,6 +390,7 @@ function Room() {
       </AnimatePresence>
     </main>
     </MotionConfig>
+    </LazyMotion>
   );
 }
 

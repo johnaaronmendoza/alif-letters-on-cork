@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, motion, useAnimate, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { AnimatePresence, m, useAnimate, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { FIGURES, type Figure } from "@/lib/figures";
 import { ease, spring } from "@/lib/motion";
 
@@ -25,7 +25,7 @@ export function BoardFigures({ muted, layout = "corners" }: { muted: boolean; la
   };
 
   const toy = (f: Figure, i: number) => (
-    <motion.div
+    <m.div
       className="relative"
       style={{ rotate: layout === "shelf" ? f.rotation * 0.5 : f.rotation, originX: 0.5, originY: 1 }}
       // finale: the figures pop in one after another
@@ -34,7 +34,7 @@ export function BoardFigures({ muted, layout = "corners" }: { muted: boolean; la
       transition={{ type: "spring", stiffness: 420, damping: 15, delay: 0.15 + i * 0.12, opacity: { duration: 0.12, delay: 0.15 + i * 0.12 } }}
     >
       {/* idle wiggle, staggered, until a toy has been found */}
-      <motion.div
+      <m.div
         style={{ originX: 0.5, originY: 1 }}
         animate={found ? { rotate: 0 } : { rotate: [0, -7, 6, -4, 2, 0] }}
         // three wiggles each, one figure at a time, then they rest (no endless decorative motion)
@@ -44,8 +44,8 @@ export function BoardFigures({ muted, layout = "corners" }: { muted: boolean; la
         {f.toy === "lighter" && <Lighter f={f} muted={muted} />}
         {f.toy === "mints" && <Mints f={f} muted={muted} />}
         {f.toy === "doll" && <Doll f={f} />}
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 
   return (
@@ -79,7 +79,7 @@ export function BoardFigures({ muted, layout = "corners" }: { muted: boolean; la
 function Toy({ label, onTap, children }: { label: string; onTap: () => void; children: ReactNode }) {
   const found = useContext(FoundContext);
   return (
-    <motion.button
+    <m.button
       type="button"
       aria-label={label}
       title={label}
@@ -89,7 +89,7 @@ function Toy({ label, onTap, children }: { label: string; onTap: () => void; chi
       whileTap={{ scale: 0.96, transition: spring.snappy }}
     >
       {children}
-    </motion.button>
+    </m.button>
   );
 }
 
@@ -132,7 +132,7 @@ function MoneyGun({ f, muted }: { f: Figure; muted: boolean }) {
       {/* cash leaves just past the barrel */}
       <div className="pointer-events-none absolute left-[48%] top-[45%] z-30">
         {bills.map((b) => (
-          <motion.span
+          <m.span
             key={b.id}
             className="absolute block"
             initial={{ x: 0, y: 0, rotate: 0, rotateX: 0, opacity: 1, scale: 0.6 }}
@@ -148,7 +148,7 @@ function MoneyGun({ f, muted }: { f: Figure; muted: boolean }) {
             style={{ transformPerspective: 400 }}
           >
             <CashBill />
-          </motion.span>
+          </m.span>
         ))}
       </div>
     </div>
@@ -197,14 +197,14 @@ function Flame() {
     <div className="absolute bottom-0 left-1/2 w-full -translate-x-1/2">
       {/* sparks from the flint */}
       {[0, 1, 2, 3].map((i) => (
-        <motion.span key={i} className="absolute bottom-0 left-1/2 block h-1 w-1 rounded-full bg-[#ffd25a]"
+        <m.span key={i} className="absolute bottom-0 left-1/2 block h-1 w-1 rounded-full bg-[#ffd25a]"
           initial={{ x: 0, y: 0, opacity: 1 }}
           animate={{ x: (i - 1.5) * 9, y: -10 - i * 4, opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }} />
       ))}
       <AnimatePresence>
         {stage === "lit" && (
-          <motion.svg key="flame" viewBox="0 0 20 34" className="relative block w-full overflow-visible" aria-hidden
+          <m.svg key="flame" viewBox="0 0 20 34" className="relative block w-full overflow-visible" aria-hidden
             style={{ originX: 0.5, originY: 1 }}
             initial={{ scaleY: 0, scaleX: 0.6, opacity: 0 }}
             animate={{ scaleY: [0, 1.15, 0.92, 1.08, 0.95, 1.05, 1], scaleX: [0.6, 1, 0.95, 1.05, 0.97, 1, 1], opacity: 1 }}
@@ -221,23 +221,23 @@ function Flame() {
             </defs>
             <path d="M10 1 C14 9 18 15 18 22 A8 8 0 0 1 2 22 C2 15 7 11 10 1 Z" fill="url(#flame)" style={{ filter: "drop-shadow(0 0 6px rgb(255 160 40 / .8))" }} />
             <ellipse cx="10" cy="29" rx="3.2" ry="2.2" fill="#4aa3ff" opacity=".8" />
-          </motion.svg>
+          </m.svg>
         )}
       </AnimatePresence>
       {stage === "out" && (
         <>
           {/* smoke puff */}
-          <motion.span className="absolute bottom-[10%] left-1/2 block aspect-square w-[160%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(230_230_230/.85),rgb(200_200_200/0)_70%)]"
+          <m.span className="absolute bottom-[10%] left-1/2 block aspect-square w-[160%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(230_230_230/.85),rgb(200_200_200/0)_70%)]"
             initial={{ scale: 0.2, opacity: 0.9, y: 0 }}
             animate={{ scale: 1.8, opacity: 0, y: -30 }}
             transition={{ duration: 1.1, ease: "easeOut" }} />
           {/* my secret is no cigarette */}
-          <motion.span className="absolute bottom-full left-1/2 block -translate-x-1/2 whitespace-nowrap font-hand text-2xl font-semibold text-ink drop-shadow-[0_1px_0_rgb(255_255_255/.8)]"
+          <m.span className="absolute bottom-full left-1/2 block -translate-x-1/2 whitespace-nowrap font-hand text-2xl font-semibold text-ink drop-shadow-[0_1px_0_rgb(255_255_255/.8)]"
             initial={{ y: 6, opacity: 0, rotate: -6, scale: 0.8 }}
             animate={{ y: -22, opacity: [0, 1, 1, 0], rotate: -6, scale: 1 }}
             transition={{ duration: 1.2, times: [0, 0.15, 0.75, 1], ease: "easeOut" }}>
             nope.
-          </motion.span>
+          </m.span>
         </>
       )}
     </div>
@@ -259,9 +259,9 @@ function Mints({ f, muted }: { f: Figure; muted: boolean }) {
       // the tin sits near the right edge, so mints arc back toward the board
       id: ++burstId, dx: rand(-80, 25), up: rand(40, 90), drop: rand(30, 60), spin: rand(-360, 360), delay: 0.12 + k * 0.07,
     }));
-    setMints((m) => [...m, ...batch]);
-    const ids = new Set(batch.map((m) => m.id));
-    setTimeout(() => setMints((m) => m.filter((x) => !ids.has(x.id))), 2200);
+    setMints((list) => [...list, ...batch]);
+    const ids = new Set(batch.map((b) => b.id));
+    setTimeout(() => setMints((list) => list.filter((x) => !ids.has(x.id))), 2200);
   };
 
   return (
@@ -271,19 +271,19 @@ function Mints({ f, muted }: { f: Figure; muted: boolean }) {
       </Toy>
       {/* mints pop out of the open end of the tin */}
       <div className="pointer-events-none absolute left-[86%] top-[22%] z-30">
-        {mints.map((m) => (
-          <motion.span
-            key={m.id}
+        {mints.map((mint) => (
+          <m.span
+            key={mint.id}
             className="absolute block h-[10px] w-[14px] rounded-[50%] bg-[radial-gradient(ellipse_at_35%_30%,#ffffff,#d6e6f2_60%,#a9c4d8)] shadow-[0_1px_2px_rgb(0_0_0/.3)]"
             initial={{ x: 0, y: 0, rotate: 0, opacity: 0 }}
             // pop up, land, two little bounces, then fade
             animate={{
-              x: [0, m.dx * 0.5, m.dx, m.dx * 1.15, m.dx * 1.25, m.dx * 1.3],
-              y: [0, -m.up, m.drop, m.drop - 14, m.drop - 3, m.drop],
-              rotate: [0, m.spin * 0.5, m.spin, m.spin, m.spin, m.spin],
+              x: [0, mint.dx * 0.5, mint.dx, mint.dx * 1.15, mint.dx * 1.25, mint.dx * 1.3],
+              y: [0, -mint.up, mint.drop, mint.drop - 14, mint.drop - 3, mint.drop],
+              rotate: [0, mint.spin * 0.5, mint.spin, mint.spin, mint.spin, mint.spin],
               opacity: [0, 1, 1, 1, 1, 0],
             }}
-            transition={{ duration: 1.5, delay: m.delay, times: [0, 0.25, 0.5, 0.65, 0.8, 1], ease: "easeOut" }}
+            transition={{ duration: 1.5, delay: mint.delay, times: [0, 0.25, 0.5, 0.65, 0.8, 1], ease: "easeOut" }}
           />
         ))}
       </div>
@@ -342,14 +342,14 @@ function Doll({ f }: { f: Figure }) {
               className="absolute block overflow-hidden rounded-[50%]"
               style={{ left: `${(left / DOLL.w) * 100}%`, top: `${(top / DOLL.h) * 100}%`, width: `${(w / DOLL.w) * 100}%`, height: `${(h / DOLL.h) * 100}%` }}
             >
-              <motion.img
+              <m.img
                 src={`/figures/doll-iris-${e.key}.webp`} alt="" draggable={false}
                 className="absolute block h-auto max-w-none select-none"
                 style={{ width: `${(IRIS_SIZE / w) * 100}%`, left: `${((x0 - left) / w) * 100}%`, top: `${((y0 - top) / h) * 100}%`, x, y }}
               />
               {/* poke it and it blinks at you */}
               {blink > 0 && (
-                <motion.span
+                <m.span
                   key={blink}
                   className="absolute inset-0 block origin-top bg-[#efc2a2]"
                   initial={{ scaleY: 0 }}

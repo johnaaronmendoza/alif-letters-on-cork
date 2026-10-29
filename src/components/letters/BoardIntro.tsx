@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useAnimate } from "framer-motion";
+import { AnimatePresence, m, useAnimate } from "framer-motion";
 import { INTRO_PIECES, type IntroPiece } from "@/lib/intro";
 import { ART_ASPECT, jitter } from "@/lib/letters";
 
@@ -98,7 +98,7 @@ export function BoardIntro({ onStamp, onImpact, onDone }: { onStamp: () => void;
     <>
       <AnimatePresence onExitComplete={onDone}>
         {!leaving && (
-          <motion.div
+          <m.div
             key="intro"
             className="cork-photo pointer-events-none absolute left-0 top-0 z-40 w-full overflow-hidden"
             style={{ aspectRatio: `${ART_ASPECT}` }}
@@ -107,7 +107,7 @@ export function BoardIntro({ onStamp, onImpact, onDone }: { onStamp: () => void;
           >
             {ready && (
               // the "camera": settles in on the bare board, punches in when the title lands
-              <motion.div
+              <m.div
                 ref={camera}
                 className="absolute inset-0"
                 initial={{ scale: 1.07 }}
@@ -116,7 +116,7 @@ export function BoardIntro({ onStamp, onImpact, onDone }: { onStamp: () => void;
               >
                 <img src={src("empty")} alt="" className="absolute inset-0 h-full w-full" draggable={false} />
                 {tracks && (
-                  <motion.img
+                  <m.img
                     src={src("tracks")} alt="" draggable={false}
                     className="absolute select-none"
                     style={{ left: `${tracks.x}%`, top: `${tracks.y}%`, width: `${tracks.w}%`, zIndex: zOf("tracks") }}
@@ -132,22 +132,22 @@ export function BoardIntro({ onStamp, onImpact, onDone }: { onStamp: () => void;
                 {title && <Title piece={title} />}
                 <Dust />
                 {/* a quick flash as the stamp hits */}
-                <motion.div
+                <m.div
                   className="absolute inset-0 bg-white mix-blend-soft-light"
                   style={{ zIndex: 60 }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: [0, 0.55, 0] }}
                   transition={{ delay: LAND, duration: 0.32, times: [0, 0.2, 1] }}
                 />
-              </motion.div>
+              </m.div>
             )}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {!leaving && (
-          <motion.button
+          <m.button
             key="skip"
             type="button"
             onClick={finish}
@@ -155,7 +155,7 @@ export function BoardIntro({ onStamp, onImpact, onDone }: { onStamp: () => void;
             initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.6 } }} exit={{ opacity: 0, transition: { duration: 0.15 } }}
           >
             skip intro ›
-          </motion.button>
+          </m.button>
         )}
       </AnimatePresence>
     </>
@@ -171,7 +171,7 @@ function Piece({ piece: p, delay, move }: { piece: IntroPiece; delay: number; mo
   if (move === "toss") {
     // photos and the poster are tossed in from the nearest side, spinning, and settle with a small bounce
     return (
-      <motion.img
+      <m.img
         src={src(p.name)} alt="" draggable={false} className="absolute select-none" style={style}
         initial={{ opacity: 0, x: fromLeft ? "-90%" : "90%", y: "-35%", rotate: (fromLeft ? -1 : 1) * (22 + spin * 10), scale: 1.12 }}
         animate={{ opacity: 1, x: "0%", y: "0%", rotate: 0, scale: 1 }}
@@ -182,7 +182,7 @@ function Piece({ piece: p, delay, move }: { piece: IntroPiece; delay: number; mo
   if (move === "swing") {
     // the keychain swings in from its ring like a pendulum
     return (
-      <motion.img
+      <m.img
         src={src(p.name)} alt="" draggable={false} className="absolute select-none" style={{ ...style, originX: 0.72, originY: 0.06 }}
         initial={{ opacity: 0, rotate: -55 }}
         animate={{ opacity: 1, rotate: [-55, 22, -11, 5, -2, 0] }}
@@ -192,7 +192,7 @@ function Piece({ piece: p, delay, move }: { piece: IntroPiece; delay: number; mo
   }
   // stickers are slapped flat: drop in big, squash on contact, settle
   return (
-    <motion.img
+    <m.img
       src={src(p.name)} alt="" draggable={false} className="absolute select-none" style={style}
       initial={{ opacity: 0, scale: 1.7, rotate: spin * 14 }}
       animate={{ opacity: 1, scale: [1.7, 0.93, 1.03, 1], rotate: [spin * 14, spin * -2, 0, 0] }}
@@ -204,7 +204,7 @@ function Piece({ piece: p, delay, move }: { piece: IntroPiece; delay: number; mo
 /** The title slams down like a rubber stamp, squashes on impact, and settles. */
 function Title({ piece: t }: { piece: IntroPiece }) {
   return (
-    <motion.img
+    <m.img
       src={src("title")} alt="" draggable={false}
       className="absolute select-none"
       style={{ left: `${t.x}%`, top: `${t.y}%`, width: `${t.w}%`, zIndex: zOf("title") }}
@@ -226,7 +226,7 @@ function Dust() {
         const dist = 15 + (jitter(`dust${i}`, 2) + 1) * 7;   // % of the board width
         const size = 0.35 + (jitter(`dust${i}`, 3) + 1) * 0.3;
         return (
-          <motion.span
+          <m.span
             key={i}
             className="absolute block rounded-full"
             style={{

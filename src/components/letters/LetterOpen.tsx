@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useDialogFocus } from "@/lib/focus";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Link2, X } from "lucide-react";
 import { toast } from "sonner";
 import { ENVELOPE_GEOM, envelopeFor, type EnvelopeColor, type Letter, type Sticker } from "@/lib/letters";
@@ -68,7 +68,7 @@ export function LetterOpen({ letter, origin, nav, onRead, onClose }: {
   });
 
   return (
-    <motion.div
+    <m.div
       className="fixed inset-0 z-50 overflow-y-auto"
       initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }}
       onClick={onClose}
@@ -77,7 +77,7 @@ export function LetterOpen({ letter, origin, nav, onRead, onClose }: {
     >
       {/* soft, warm backdrop tinted by the current envelope */}
       <div className="fixed inset-0 bg-[#1c140e]/55 backdrop-blur-md" />
-      <motion.div className="pointer-events-none fixed inset-0"
+      <m.div className="pointer-events-none fixed inset-0"
         animate={{ background: `radial-gradient(ellipse at 50% 45%, ${env.paper}33 0%, transparent 60%)` }} transition={{ duration: 0.4 }} />
 
       <button
@@ -98,9 +98,9 @@ export function LetterOpen({ letter, origin, nav, onRead, onClose }: {
       <div className="relative flex min-h-full items-center justify-center px-5 pb-24 pt-12">
         <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl">
           <AnimatePresence mode="wait" initial={false} custom={dir}>
-            <motion.div key={letter.id} custom={dir} variants={slide} initial="enter" animate="center" exit="exit">
+            <m.div key={letter.id} custom={dir} variants={slide} initial="enter" animate="center" exit="exit">
               <LetterStage letter={letter} env={env} origin={dir === 0 ? origin : undefined} onRead={onRead} />
-            </motion.div>
+            </m.div>
           </AnimatePresence>
         </div>
       </div>
@@ -122,7 +122,7 @@ export function LetterOpen({ letter, origin, nav, onRead, onClose }: {
           </div>
         </div>
       )}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -155,7 +155,7 @@ function LetterStage({ letter, env, origin, onRead }: { letter: Letter; env: Env
   return (
     <AnimatePresence mode="wait">
       {stage !== "open" ? (
-        <motion.div
+        <m.div
           key="envelope"
           initial={start}
           animate={{ x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }}
@@ -165,18 +165,18 @@ function LetterStage({ letter, env, origin, onRead }: { letter: Letter; env: Env
           style={{ width: "min(400px, 86vw, calc((100svh - 13rem) * 1.3))" }}
         >
           <Envelope env={env} stage={stage} flapOpen={flapOpen} from={letter.from_name} onOpen={open} />
-          <motion.p
+          <m.p
             animate={{ opacity: stage === "sealed" ? 1 : 0 }}
             transition={{ duration: 0.2 }}
             className="mt-6 text-center font-clean text-sm tracking-wide text-white/85"
           >
             tap the seal to open
-          </motion.p>
-        </motion.div>
+          </m.p>
+        </m.div>
       ) : (
-        <motion.div key="letter" className="relative mx-auto w-full">
+        <m.div key="letter" className="relative mx-auto w-full">
           <OpenedLetter letter={letter} env={env} />
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );
@@ -200,7 +200,7 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
   const body = { left: pct(ENV.body.x, ENV.w), top: pct(ENV.body.y, ENV.h), width: pct(ENV.body.w, ENV.w), height: pct(ENV.body.h, ENV.h) };
 
   return (
-    <motion.div
+    <m.div
       // unpinned: the envelope floats free once the pin pops out, and wobbles when the seal breaks
       initial={{ y: 0 }}
       animate={stage === "breaking" ? { rotate: [0, -2.5, 2, -1, 0], y: [0, -4, 0] } : { rotate: 0, y: [0, -8, -4] }}
@@ -212,7 +212,7 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
       <div className="absolute rounded-[3px]" style={{ ...body, zIndex: 1, background: `linear-gradient(180deg, ${env.inside} 0%, ${env.shade} 70%)`, boxShadow: "inset 0 10px 18px rgb(0 0 0 / .18)" }} />
 
       {/* the letter, tucked inside */}
-      <motion.div
+      <m.div
         className="absolute inset-x-[9%] top-[15%] h-[70%] rounded-[2px] bg-[#fdfbf6]"
         style={{ zIndex: 3, backgroundImage: PAPER_GRAIN, boxShadow: "0 2px 6px rgb(0 0 0 / .14)" }}
         animate={stage === "rise" ? { y: "-62%" } : { y: "0%" }}
@@ -224,13 +224,13 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
         <div className="absolute inset-x-[9%] top-[22%] space-y-[6%]">
           {[88, 72, 80].map((w, k) => <div key={k} className="h-[2px] rounded-full bg-ink/10" style={{ width: `${w}%` }} />)}
         </div>
-      </motion.div>
+      </m.div>
 
       {/* front pocket (photo) */}
       <img src={layer("pocket")} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none" style={{ zIndex: 4 }} />
 
       {/* who it's from: a typed label taped to the front */}
-      <motion.div
+      <m.div
         className="pointer-events-none absolute bottom-[5.5%] left-1/2 -translate-x-1/2"
         style={{ zIndex: 5 }}
         animate={{ opacity: stage === "rise" ? 0 : 1 }}
@@ -240,10 +240,10 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
           <span className="absolute -top-[0.55em] left-1/2 h-[1.1em] w-[3.4em] -translate-x-1/2 rotate-3 bg-tape/80" />
           from {from}
         </div>
-      </motion.div>
+      </m.div>
 
       {/* the flap (photo): swings up and back, passing behind the letter halfway */}
-      <motion.div
+      <m.div
         className="absolute inset-0"
         style={{ zIndex: flapOpen ? 2 : 6, transformStyle: "preserve-3d", originX: 0.5, originY: ENV.body.y / ENV.h }}
         initial={false}
@@ -254,7 +254,7 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
         {/* inside of the flap: same paper, in shade */}
         <img src={layer("flap")} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none"
           style={{ backfaceVisibility: "hidden", transform: "rotateX(180deg)", filter: "brightness(.82) saturate(.9)" }} />
-      </motion.div>
+      </m.div>
 
       {/* wax seal on the flap tip */}
       <button
@@ -269,7 +269,7 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
       </button>
 
       {/* the push pin from the board pops out first */}
-      <motion.img
+      <m.img
         src={layer("pin")} alt="" draggable={false}
         className="pointer-events-none absolute inset-0 h-full w-full select-none"
         style={{ zIndex: 8, originX: 0.5, originY: 0.2 }}
@@ -277,7 +277,7 @@ function Envelope({ env, stage, flapOpen, from, onOpen }: {
         animate={{ y: [0, 6, -70], x: [0, 0, 24], rotate: [0, 0, 28], opacity: [1, 1, 0] }}
         transition={{ duration: 0.6, delay: 0.45, times: [0, 0.25, 1], ease: "easeOut" }}
       />
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -289,7 +289,7 @@ function WaxSeal({ stage }: { stage: Stage }) {
   );
   if (!broken) {
     return (
-      <motion.span
+      <m.span
         className="block"
         // a gentle "tap me" pulse, three times, then it rests
         animate={{ scale: [1, 1.06, 1] }}
@@ -298,13 +298,13 @@ function WaxSeal({ stage }: { stage: Stage }) {
         whileTap={{ scale: 0.92, transition: spring.snappy }}
       >
         {face}
-      </motion.span>
+      </m.span>
     );
   }
   return (
     <span className="relative block">
       {[-1, 1].map((side) => (
-        <motion.span
+        <m.span
           key={side}
           className="absolute inset-0 block"
           style={{ clipPath: side < 0 ? "polygon(0 0, 52% 0, 46% 38%, 54% 60%, 47% 100%, 0 100%)" : "polygon(52% 0, 100% 0, 100% 100%, 47% 100%, 54% 60%, 46% 38%)" }}
@@ -313,7 +313,7 @@ function WaxSeal({ stage }: { stage: Stage }) {
           transition={{ duration: 0.6, ease: [0.4, 0, 0.9, 0.6] }}
         >
           {face}
-        </motion.span>
+        </m.span>
       ))}
       <span className="invisible block">{face}</span>
     </span>
@@ -327,7 +327,7 @@ function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
   const hasCard = canvas && readCanvas(letter.stickers).photocard && !!letter.photo_url;
   const card = useSrc(hasCard ? letter.photo_url : null);
   return (
-    <motion.div
+    <m.div
       className="relative mx-auto"
       // the page is 3:4, so size it by the window height: it fits without scrolling.
       // 15rem = outer padding (9rem, incl. room for the next/previous bar) + "from" label (~2.5rem) + panel padding (3.5rem)
@@ -343,7 +343,7 @@ function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
       </div>
 
       {/* unfolds from its middle third, like a tri-folded letter opening up */}
-      <motion.div
+      <m.div
         initial={{ clipPath: "inset(33.4% 0% 33.4% 0% round 18px)" }}
         animate={{ clipPath: "inset(0% 0% 0% 0% round 18px)" }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
@@ -360,15 +360,15 @@ function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
         )}
         {/* crease shadows that fade as the paper flattens */}
         {[33.4, 66.6].map((top) => (
-          <motion.div key={top} className="pointer-events-none absolute inset-x-0 h-6 -translate-y-1/2"
+          <m.div key={top} className="pointer-events-none absolute inset-x-0 h-6 -translate-y-1/2"
             style={{ top: `${top}%`, background: "linear-gradient(180deg, transparent, rgb(0 0 0 / .14), transparent)" }}
             initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ duration: 0.9, delay: 0.55 }} />
         ))}
-      </motion.div>
+      </m.div>
 
       {/* the photocard slides out from behind the letter once it has unfolded */}
       {hasCard && (
-        <motion.div
+        <m.div
           className="absolute -right-[3%] top-[46%] z-10 w-[38%] sm:-right-[14%]"
           initial={{ opacity: 0, x: -60, rotate: 0 }}
           animate={{ opacity: 1, x: 0, rotate: 6 }}
@@ -376,8 +376,8 @@ function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
           whileHover={{ rotate: 2, y: -6, scale: 1.03, transition: spring.soft }}
         >
           <Photocard src={card} />
-        </motion.div>
+        </m.div>
       )}
-    </motion.div>
+    </m.div>
   );
 }
