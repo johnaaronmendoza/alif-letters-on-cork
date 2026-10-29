@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowLeft, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, ImageIcon, Layers, Link2, Maximize, Mic, Minus, Pencil,
+  ArrowLeft, Check, ChevronLeft, CirclePlus, ChevronRight, Copy, Eye, EyeOff, ImageIcon, Layers, Link2, Maximize, Mic, Minus, Pencil,
   Plus, Redo2, Square, Trash2, Type, Undo2, Upload, Video, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import {
 import { ease, fadeOut, spring } from "@/lib/motion";
 import { LetterCanvas } from "./LetterCanvas";
 import { StickerArt } from "./stickers";
+import { Photocard } from "./Photocard";
 
 type Dialog = null | { kind: "link" | "video" | "audio"; editId?: string };
 /** A new element before it gets an id, stacking order and (optionally) a position. */
@@ -36,6 +37,8 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
   const [editing, setEditing] = useState<string | null>(null);
   const [bg, setBg] = useState<string>("peach");
   const [photocard, setPhotocard] = useState(false);
+  const [cardSrc, setCardSrc] = useState<string | null>(null);
+  const cardInput = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(0);
   const [preview, setPreview] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -176,7 +179,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
 
   // ── publish ────────────────────────────────────────────────
   const publish = async () => {
-    if (!els.length) { toast.error("add something to your letter first ♡"); return; }
+    if (!els.length && !(photocard && cardSrc)) { toast.error("add something to your letter first ♡"); return; }
     setBusy(true);
     setSelected(null);
     try {
@@ -194,10 +197,9 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
         }
         stored.push(copy);
       }
-      const cover = photocard
-        ? (stored.find((e) => e.kind === "image") as { src?: string } | undefined)?.src
-          ?? (stored.find((e) => e.kind === "sticker" && e.photo) as { photo?: string } | undefined)?.photo
-          ?? null
+      const cardBlob = photocard && cardSrc ? files.current.get("photocard") : undefined;
+      const cover = cardBlob
+        ? await uploadMedia("photos", cardBlob, (cardBlob.type.split("/")[1] ?? "jpg").replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg")
         : null;
       const spot = newBoardMeta();
       const { data, error } = await supabase.from("letters").insert({
@@ -307,12 +309,33 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
               </Section>
 
               <Section title="photocard" action={
-                <button role="switch" aria-checked={photocard} aria-label="photocard" onClick={() => setPhotocard(!photocard)}
-                  className={`grid h-7 w-7 place-items-center rounded-md border transition-colors duration-200 ${photocard ? "border-ink bg-ink text-white" : "border-black/20 bg-white"}`}>
-                  {photocard && <span className="text-xs">✓</span>}
+                <button role="switch" aria-checked={photocard} aria-label="include a photocard" onClick={() => setPhotocard(!photocard)}
+                  className={`grid h-7 w-7 place-items-center rounded-md border transition-colors duration-200 ${photocard ? "border-[#4a4541] bg-[#4a4541] text-white" : "border-black/20 bg-white"}`}>
+                  {photocard && <Check className="h-4 w-4" />}
                 </button>
               }>
-                <p className="-mt-1 text-xs text-ink/50">show your first photo on the board instead of the letter</p>
+                <AnimatePresence initial={false}>
+                  {photocard && (
+                    <motion.div key="drop" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0, transition: fadeOut }} transition={{ duration: 0.25, ease: ease.out }} className="overflow-hidden">
+                      {cardSrc ? (
+                        <div className="flex items-center gap-3 rounded-xl border border-black/10 bg-white p-2.5">
+                          <img src={cardSrc} alt="photocard" className="h-16 w-14 rounded object-cover shadow-sm" />
+                          <div className="flex flex-1 flex-col items-start gap-1 text-sm">
+                            <button className="min-h-9 underline-offset-2 hover:underline" onClick={() => cardInput.current?.click()}>replace</button>
+                            <button className="min-h-9 text-ink/50 underline-offset-2 hover:underline" onClick={() => { setCardSrc(null); files.current.delete("photocard"); }}>remove</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => cardInput.current?.click()}
+                          className="flex min-h-36 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-black/15 text-ink/50 transition-colors duration-200 hover:border-black/30 hover:bg-white/60 hover:text-ink/70">
+                          <CirclePlus className="h-7 w-7" strokeWidth={1.5} />
+                          <span className="font-typewriter text-sm uppercase tracking-[0.12em]">add image</span>
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {!photocard && <p className="-mt-1 text-xs text-ink/50">tuck a printed photo in with your letter</p>}
               </Section>
 
               <Section title="background">
@@ -356,6 +379,7 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
             <div className="absolute inset-0 overflow-auto" onPointerDown={(e) => { if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.backdrop) { setSelected(null); if (editing) edit(null); } }}>
             <div data-backdrop="1" className="flex min-h-full items-start justify-center px-6 pb-24 pt-20 sm:items-center">
               <div style={{ width: `min(${Math.round(560 * zoom)}px, ${Math.round(88 * zoom)}%)` }} className="transition-[width] duration-200">
+                <div className="relative">
                 <LetterCanvas
                   elements={els}
                   mode={preview ? "view" : "edit"}
@@ -367,6 +391,26 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
                   onGestureStart={startGesture}
                   onGestureEnd={endGesture}
                 />
+                <AnimatePresence>
+                  {photocard && (
+                    <motion.button
+                      key="card"
+                      type="button"
+                      aria-label={cardSrc ? "replace photocard image" : "add photocard image"}
+                      onClick={() => !preview && cardInput.current?.click()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      initial={{ opacity: 0, x: 40, rotate: 14 }}
+                      animate={{ opacity: 1, x: 0, rotate: 6 }}
+                      exit={{ opacity: 0, x: 30, rotate: 12, transition: fadeOut }}
+                      whileHover={preview ? undefined : { rotate: 3, y: -4, transition: spring.soft }}
+                      transition={spring.soft}
+                      className="absolute -right-[16%] top-[48%] z-20 w-[40%] cursor-pointer"
+                    >
+                      <Photocard src={cardSrc} prompt={!preview} />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+                </div>
                 {!els.length && !preview && (
                   <p className="mt-4 text-center text-sm text-ink/60">start with text, a photo or a sticker from the left ♡</p>
                 )}
@@ -382,6 +426,15 @@ export function LetterStudio({ letters, onClose, onPinned }: { letters: Letter[]
           </div>
         </div>
 
+        <input ref={cardInput} type="file" accept="image/*" className="sr-only" tabIndex={-1}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (!f) return;
+            if (f.size > MAX_IMAGE) { toast.error("images must be under 8MB"); return; }
+            files.current.set("photocard", f);
+            setCardSrc(URL.createObjectURL(f));
+          }} />
         <input ref={imageInput} type="file" accept="image/*" className="sr-only" tabIndex={-1}
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) pickImage(f); }} />
 

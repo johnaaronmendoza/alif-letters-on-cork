@@ -4,7 +4,8 @@ import { X } from "lucide-react";
 import { envelopeFor, type EnvelopeColor, type Letter, type Sticker } from "@/lib/letters";
 import { ease, fadeOut, spring } from "@/lib/motion";
 import { LetterPaper } from "./LetterPaper";
-import { LetterCanvas } from "./LetterCanvas";
+import { LetterCanvas, useSrc } from "./LetterCanvas";
+import { Photocard } from "./Photocard";
 import { backgroundCss, isCanvasLetter, readCanvas } from "@/lib/canvas";
 
 /**
@@ -263,8 +264,11 @@ function WaxSeal({ stage }: { stage: Stage }) {
 
 function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
   const canvas = isCanvasLetter(letter.stickers);
+  const hasCard = canvas && readCanvas(letter.stickers).photocard && !!letter.photo_url;
+  const card = useSrc(hasCard ? letter.photo_url : null);
   return (
     <motion.div
+      className="relative"
       initial={{ y: 60, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
@@ -298,6 +302,19 @@ function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
             initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ duration: 0.9, delay: 0.55 }} />
         ))}
       </motion.div>
+
+      {/* the photocard slides out from behind the letter once it has unfolded */}
+      {hasCard && (
+        <motion.div
+          className="absolute -right-[3%] top-[46%] z-10 w-[38%] sm:-right-[14%]"
+          initial={{ opacity: 0, x: -60, rotate: 0 }}
+          animate={{ opacity: 1, x: 0, rotate: 6 }}
+          transition={{ ...spring.soft, delay: 0.8, opacity: { duration: 0.2, delay: 0.8 } }}
+          whileHover={{ rotate: 2, y: -6, scale: 1.03, transition: spring.soft }}
+        >
+          <Photocard src={card} />
+        </motion.div>
+      )}
     </motion.div>
   );
 }

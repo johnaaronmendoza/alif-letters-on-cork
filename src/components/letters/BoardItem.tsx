@@ -1,12 +1,10 @@
 import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
 import { PIN_ORIGIN, ease, spring } from "@/lib/motion";
-import { envelopeFor, isLocked, jitter, type BoardSpot, type Letter } from "@/lib/letters";
-import { isCanvasLetter } from "@/lib/canvas";
+import { envelopeFor, isLocked, type BoardSpot, type Letter } from "@/lib/letters";
+import { isCanvasLetter, readCanvas } from "@/lib/canvas";
 import { useMedia } from "./LetterPaper";
 
-const PINS = ["#2bb3a3", "#f2c230", "#d9483b", "#a77bd6", "#d9483b"];
-const pick = <T,>(list: T[], id: string, salt: number) => list[Math.floor((jitter(id, salt) + 1) * 2.5) % list.length]!;
 
 /** A glossy push pin seen from slightly above. */
 export function Pin({ color }: { color: string }) {
@@ -36,18 +34,17 @@ export function BoardItem({
   index: number;
   onOpen: (rect: DOMRect) => void;
 }) {
-  const photocard = isCanvasLetter(letter.stickers) && !!letter.photo_url;
+  const photocard = isCanvasLetter(letter.stickers) && readCanvas(letter.stickers).photocard && !!letter.photo_url;
   const photo = useMedia(photocard ? letter.photo_url : null);
   const locked = isLocked(letter);
   const env = envelopeFor(letter.id).name;
-  const pin = pick(PINS, letter.id, 9);
   const r = spot.r;
 
   return (
     // Static wrapper owns placement + centering, so the animated child can't clobber it.
     <div
       className="absolute z-10 -translate-x-1/2 -translate-y-1/2 hover:z-30 focus-within:z-30"
-      style={{ left: `${spot.x}%`, top: `${(spot.y / boardHeight) * 100}%`, width: photocard ? "9.5%" : "11%", minWidth: photocard ? 76 : 88 }}
+      style={{ left: `${spot.x}%`, top: `${(spot.y / boardHeight) * 100}%`, width: "11%", minWidth: 88 }}
     >
       <motion.button
         id={`letter-${letter.id}`}
@@ -59,25 +56,22 @@ export function BoardItem({
         whileHover={{ y: -6, scale: 1.05, rotate: r * 0.4, transition: spring.soft }}
         whileTap={{ scale: 0.97, transition: spring.snappy }}
         className="relative block w-full cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cork"
-        aria-label={`${locked ? "locked " : ""}letter from ${letter.from_name}`}
+        aria-label={`${locked ? "locked " : ""}letter from ${letter.from_name}${photocard ? ", with a photocard" : ""}`}
       >
-        {photocard && <Pin color={pin} />}
-
-        {photocard ? (
-          <div className="w-full bg-[#f6f4ef] p-[6%] pb-[4%] shadow-item">
-            <div className="aspect-square w-full overflow-hidden bg-ink/10">
-              {photo && <img src={photo} alt="" className="h-full w-full object-cover" draggable={false} />}
-            </div>
-            <div className="truncate pt-[6%] text-center font-clean text-[clamp(9px,1vw,13px)] font-semibold text-ink">{letter.from_name}</div>
-          </div>
-        ) : (
           <div className="relative w-full" style={{ aspectRatio: "600 / 457", filter: "drop-shadow(0 3px 5px rgb(40 25 10 / .25))" }}>
-            <img src={`/board/envelopes/${env}.webp`} alt="" width={600} height={457} draggable={false} loading="lazy" className="block h-full w-full select-none" />
+            {/* a corner of the photocard peeking out from behind the envelope */}
+            {photocard && (
+              <span className="absolute -top-[16%] right-[7%] block w-[30%] rotate-[9deg] bg-[#fbfaf7] p-[3%] shadow-sm" aria-hidden>
+                <span className="block aspect-[4/5] w-full overflow-hidden bg-ink/10">
+                  {photo && <img src={photo} alt="" draggable={false} className="h-full w-full object-cover" />}
+                </span>
+              </span>
+            )}
+            <img src={`/board/envelopes/${env}.webp`} alt="" width={600} height={457} draggable={false} loading="lazy" className="relative block h-full w-full select-none" />
             <span className="absolute inset-x-[22%] top-[56%] -translate-y-1/2 truncate text-center font-clean text-[clamp(9px,1.05vw,15px)] font-semibold leading-tight text-ink">
               {letter.from_name}
             </span>
           </div>
-        )}
 
         {locked && (
           <span className="absolute -bottom-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-ink text-cream shadow-item"><Lock className="h-3.5 w-3.5" /></span>
