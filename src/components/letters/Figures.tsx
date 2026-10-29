@@ -8,8 +8,8 @@ import { ease, spring } from "@/lib/motion";
  * money gun → cash burst · cigarettes → lighter flick, then "nope." ·
  * mints → tin rattles and mints bounce out · doll → eyes follow you.
  *
- * Until someone taps one, they wiggle now and then and a "psst" note points at
- * them; that stops for good (in this browser) after the first tap.
+ * Until someone taps one, they wiggle now and then; that stops for good
+ * (in this browser) after the first tap.
  */
 const FoundContext = createContext<() => void>(() => {});
 
@@ -58,18 +58,10 @@ export function BoardFigures({ muted, layout = "corners" }: { muted: boolean; la
               {toy(f, i)}
             </div>
           ))}
-          <AnimatePresence>
-            {!found && (
-              <Hint key="hint" className="left-[7.5%] top-[1.5cqw]" text="← psst, tap us" />
-            )}
-          </AnimatePresence>
         </>
       ) : (
         // phones: the figures stand on a little shelf under the collage
-        <div className="relative px-[3%] pb-3 pt-7">
-          <AnimatePresence>
-            {!found && <Hint key="hint" className="left-1/2 top-0 -translate-x-1/2" text="psst — tap us ↓" />}
-          </AnimatePresence>
+        <div className="relative px-[3%] pb-3 pt-4">
           <div className="relative z-10 flex items-end justify-around">
             {FIGURES.map((f, i) => (
               <div key={f.src} className="w-[20%]">{toy(f, i)}</div>
@@ -79,23 +71,6 @@ export function BoardFigures({ muted, layout = "corners" }: { muted: boolean; la
         </div>
       )}
     </FoundContext.Provider>
-  );
-}
-
-/** A small typed note on tape, pointing at the toys. */
-function Hint({ text, className }: { text: string; className: string }) {
-  return (
-    <motion.div
-      className={`pointer-events-none absolute z-30 ${className}`}
-      initial={{ opacity: 0, y: -6, rotate: -5 }}
-      animate={{ opacity: 1, y: 0, rotate: -3, transition: { delay: 2.5, ...spring.soft } }}
-      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
-    >
-      <span className="relative block whitespace-nowrap bg-[#f8f4ea] px-3 py-1.5 font-typewriter text-xs text-ink shadow-[0_2px_4px_rgb(0_0_0/.2),0_6px_10px_-4px_rgb(0_0_0/.3)]">
-        <span className="absolute -top-2 left-1/2 h-3.5 w-10 -translate-x-1/2 rotate-2 bg-tape/80" />
-        {text}
-      </span>
-    </motion.div>
   );
 }
 
