@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion, useAnimate } from "framer-motion";
 import { Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { ART_ASPECT, layoutBoard, playThunk, type Letter } from "@/lib/letters";
+import { ART_ASPECT, layoutBoard, playStamp, playThunk, type Letter } from "@/lib/letters";
 import { ease, spring } from "@/lib/motion";
 import { FIGURES } from "@/lib/figures";
 import { BoardItem } from "@/components/letters/BoardItem";
 import { LetterOpen } from "@/components/letters/LetterOpen";
 import { LetterStudio } from "@/components/letters/LetterStudio";
+import { BoardIntro } from "@/components/letters/BoardIntro";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -33,6 +34,22 @@ function Room() {
   const mutedRef = useRef(false);
   mutedRef.current = muted;
   const knownIds = useRef(new Set<string>());
+  // intro plays once per visit; on by default so the full collage never flashes first
+  const [intro, setIntro] = useState(true);
+  const [board, animateBoard] = useAnimate();
+  useEffect(() => {
+    let seen = false;
+    try { seen = sessionStorage.getItem("alif-intro-seen") === "1"; } catch { /* storage blocked */ }
+    if (seen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) setIntro(false);
+  }, []);
+  const stamp = () => {
+    if (board.current) void animateBoard(board.current, { x: [0, -12, 10, -7, 4, -2, 0], y: [0, 6, -4, 3, -1, 0] }, { duration: 0.45, ease: "easeOut" });
+    if (!mutedRef.current) playStamp();
+  };
+  const introDone = () => {
+    setIntro(false);
+    try { sessionStorage.setItem("alif-intro-seen", "1"); } catch { /* storage blocked */ }
+  };
 
   useEffect(() => {
     setMuted(localStorage.getItem("alif-muted") === "1");
@@ -80,7 +97,7 @@ function Room() {
       </button>
 
       <section className="relative mx-auto mt-20 w-full md:mt-[max(6rem,9vw)]">
-        {FIGURES.map((f, i) => (
+        {!intro && FIGURES.map((f, i) => (
           // Static wrapper anchors the figure by its base; the image inside does the motion.
           <div
             key={f.src}
@@ -102,7 +119,7 @@ function Room() {
 
         <div className="overflow-x-auto px-4 pb-4 sm:px-0">
           <div className="relative mx-auto w-[900px] max-w-none sm:w-[80%] sm:min-w-[640px]">
-            <div className="frame rounded-md p-[2.2%]">
+            <div ref={board} className="frame rounded-md p-[2.2%]">
               <div className="cork-photo relative w-full overflow-hidden rounded-sm" style={{ aspectRatio: `${ART_ASPECT} / ${height / 100}` }}>
                 {/* Alif's collage is the board; letters pin into the open cork around it,
                     and the cork carries on below once those spots are full. */}
@@ -116,7 +133,8 @@ function Room() {
                   className="pointer-events-none absolute left-0 top-0 block h-auto w-full select-none"
                   style={extended ? { maskImage: "linear-gradient(to bottom, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 95%, transparent)" } : undefined}
                 />
-                {letters.map((l, i) => {
+                {intro && <BoardIntro onStamp={stamp} onDone={introDone} />}
+                {!intro && letters.map((l, i) => {
                   const spot = spots.get(l.id);
                   return spot ? (
                     <BoardItem key={l.id} letter={l} spot={spot} boardHeight={height} index={i} isNew={newIds.has(l.id)} onOpen={(rect) => setOpen({ letter: l, rect })} />
@@ -128,6 +146,7 @@ function Room() {
         </div>
       </section>
 
+      {!intro && (
       <motion.button
         onClick={() => setStudio(true)}
         className="paper-tag fixed bottom-5 right-5 z-40 min-h-11 cursor-pointer px-5 py-3 pl-8 font-hand text-2xl text-ink focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
@@ -144,6 +163,7 @@ function Room() {
       >
         ✉ write alif a letter
       </motion.button>
+      )}
 
       <AnimatePresence>
         {open && <LetterOpen key="open" letter={open.letter} origin={open.rect} onClose={() => setOpen(null)} />}

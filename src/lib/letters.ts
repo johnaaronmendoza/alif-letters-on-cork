@@ -177,3 +177,29 @@ export function playThunk() {
     setTimeout(() => ctx.close(), 400);
   } catch { /* ignore */ }
 }
+
+/** A heavy rubber-stamp thump for the intro title (low thud + a short burst of noise). */
+export function playStamp() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(140, t);
+    o.frequency.exponentialRampToValueAtTime(40, t + 0.18);
+    g.gain.setValueAtTime(0.9, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    o.connect(g).connect(ctx.destination);
+    const len = Math.floor(ctx.sampleRate * 0.08);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
+    const n = ctx.createBufferSource(), ng = ctx.createGain();
+    n.buffer = buf;
+    ng.gain.value = 0.35;
+    n.connect(ng).connect(ctx.destination);
+    o.start(t); o.stop(t + 0.3); n.start(t);
+    setTimeout(() => ctx.close(), 500);
+  } catch { /* audio not available */ }
+}
