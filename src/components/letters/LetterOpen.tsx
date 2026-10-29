@@ -22,7 +22,9 @@ const PAPER_GRAIN =
 /** Offset that places the centered envelope back over the item that was tapped. */
 function fromOrigin(origin: DOMRect | undefined) {
   if (typeof window === "undefined" || !origin) return { x: 0, y: 40, scale: 0.6 };
-  const width = Math.min(440, window.innerWidth - 40);
+  // same size as the opened envelope: min(400px, 86vw, (100svh - 12rem) × 1.3)
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const width = Math.min(400, window.innerWidth * 0.86, (window.innerHeight - 12 * rem) * 1.3);
   return {
     x: origin.left + origin.width / 2 - window.innerWidth / 2,
     y: origin.top + origin.height / 2 - window.innerHeight / 2,
@@ -81,13 +83,14 @@ export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin
                 animate={{ x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }}
                 exit={{ y: 140, opacity: 0, scale: 0.94, transition: { duration: 0.3, ease: ease.in } }}
                 transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
-                className="mx-auto w-full max-w-[440px]"
+                className="mx-auto"
+                style={{ width: "min(400px, 86vw, calc((100svh - 12rem) * 1.3))" }}
               >
                 <Envelope env={env} stage={stage} flapOpen={flapOpen} from={letter.from_name} onOpen={open} />
                 <motion.p
                   animate={{ opacity: stage === "sealed" ? 1 : 0 }}
                   transition={{ duration: 0.2 }}
-                  className="mt-8 text-center font-clean text-sm tracking-wide text-white/85"
+                  className="mt-6 text-center font-clean text-sm tracking-wide text-white/85"
                 >
                   tap the seal to open
                 </motion.p>
@@ -106,93 +109,99 @@ export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin
 
 // ── the envelope ──────────────────────────────────────────────────
 
+/**
+ * The opened envelope is the same photo as on the board, cut into layers:
+ * the inside (drawn), the letter, the front pocket, the flap and the push pin.
+ * Coordinates are in the 1063×809 envelope photo.
+ */
+const ENV = { w: 1063, h: 809, body: { x: 5, y: 101, w: 1041, h: 692 }, tip: { x: 522, y: 600 } };
+const pct = (v: number, of: number) => `${(v / of) * 100}%`;
+
 function Envelope({ env, stage, flapOpen, from, onOpen }: {
   env: EnvelopeColor; stage: Stage; flapOpen: boolean; from: string; onOpen: () => void;
 }) {
   const sealed = stage === "sealed";
-  const paper = { backgroundColor: env.paper, backgroundImage: PAPER_GRAIN };
+  const layer = (part: "pocket" | "flap" | "pin") => `/board/envelopes/open/${env.name}-${part}.webp`;
+  const body = { left: pct(ENV.body.x, ENV.w), top: pct(ENV.body.y, ENV.h), width: pct(ENV.body.w, ENV.w), height: pct(ENV.body.h, ENV.h) };
 
   return (
     <motion.div
-      // a small "something's coming" wobble when the seal breaks
-      animate={stage === "breaking" ? { rotate: [0, -2.5, 2, -1, 0], y: [0, -4, 0] } : { rotate: 0, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeInOut" }}
-      className="relative aspect-[10/7] w-full"
-      style={{ perspective: 1400 }}
+      // unpinned: the envelope floats free once the pin pops out, and wobbles when the seal breaks
+      initial={{ y: 0 }}
+      animate={stage === "breaking" ? { rotate: [0, -2.5, 2, -1, 0], y: [0, -4, 0] } : { rotate: 0, y: [0, -8, -4] }}
+      transition={stage === "breaking" ? { duration: 0.5, ease: "easeInOut" } : { duration: 0.9, delay: 0.75, ease: "easeOut" }}
+      className="relative w-full"
+      style={{ aspectRatio: `${ENV.w} / ${ENV.h}`, perspective: 1400, filter: "drop-shadow(0 22px 26px rgb(20 10 0 / .45))" }}
     >
-      {/* inside of the envelope, seen once the flap is up */}
-      <div className="absolute inset-0 rounded-[3px]" style={{ background: `linear-gradient(180deg, ${env.inside}, ${env.shade})`, boxShadow: "0 24px 50px -18px rgb(20 10 0 / .55), 0 6px 14px rgb(20 10 0 / .25)" }} />
+      {/* the inside of the envelope, seen through the opening */}
+      <div className="absolute rounded-[3px]" style={{ ...body, zIndex: 1, background: `linear-gradient(180deg, ${env.inside} 0%, ${env.shade} 70%)`, boxShadow: "inset 0 10px 18px rgb(0 0 0 / .18)" }} />
 
-      {/* the folded letter, tucked inside */}
+      {/* the letter, tucked inside */}
       <motion.div
-        className="absolute inset-x-[7%] top-[6%] h-[82%] rounded-[2px] bg-[#fdfbf6]"
-        style={{ zIndex: 2, backgroundImage: PAPER_GRAIN, boxShadow: "0 2px 6px rgb(0 0 0 / .12)" }}
-        animate={stage === "rise" ? { y: "-58%" } : { y: "0%" }}
+        className="absolute inset-x-[9%] top-[15%] h-[70%] rounded-[2px] bg-[#fdfbf6]"
+        style={{ zIndex: 3, backgroundImage: PAPER_GRAIN, boxShadow: "0 2px 6px rgb(0 0 0 / .14)" }}
+        animate={stage === "rise" ? { y: "-62%" } : { y: "0%" }}
         transition={{ type: "spring", stiffness: 120, damping: 18 }}
       >
-        {/* fold creases and a hint of handwriting */}
         <div className="absolute inset-x-0 top-1/3 h-px bg-black/[.07] shadow-[0_1px_0_rgb(255_255_255/.8)]" />
         <div className="absolute inset-x-0 top-2/3 h-px bg-black/[.07] shadow-[0_1px_0_rgb(255_255_255/.8)]" />
-        <div className="absolute left-[10%] top-[10%] font-hand text-[clamp(14px,4vw,22px)] text-ink/70">dear alif,</div>
-        <div className="absolute inset-x-[10%] top-[22%] space-y-[6%]">
-          {[88, 72, 80].map((w, i) => <div key={i} className="h-[2px] rounded-full bg-ink/10" style={{ width: `${w}%` }} />)}
+        <div className="absolute left-[9%] top-[9%] font-hand text-[clamp(14px,4vw,22px)] text-ink/70">dear alif,</div>
+        <div className="absolute inset-x-[9%] top-[22%] space-y-[6%]">
+          {[88, 72, 80].map((w, k) => <div key={k} className="h-[2px] rounded-full bg-ink/10" style={{ width: `${w}%` }} />)}
         </div>
       </motion.div>
 
-      {/* front pocket: side and bottom folds */}
-      <svg viewBox="0 0 100 70" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" style={{ zIndex: 3 }} aria-hidden>
-        <defs>
-          <linearGradient id="side-l" x1="0" x2="1"><stop offset="0" stopColor="#fff" stopOpacity=".22" /><stop offset="1" stopColor="#000" stopOpacity=".04" /></linearGradient>
-          <linearGradient id="side-r" x1="1" x2="0"><stop offset="0" stopColor="#000" stopOpacity=".08" /><stop offset="1" stopColor="#000" stopOpacity=".02" /></linearGradient>
-          <linearGradient id="bottom" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#000" stopOpacity=".06" /><stop offset="1" stopColor="#fff" stopOpacity=".18" /></linearGradient>
-        </defs>
-        <path d="M0 0 L47 38 Q50 40 53 38 L100 0 V70 H0 Z" fill={env.paper} />
-        <path d="M0 0 L46 39 L0 70 Z" fill="url(#side-l)" />
-        <path d="M100 0 L54 39 L100 70 Z" fill="url(#side-r)" />
-        <path d="M0 70 L46 37 Q50 34.5 54 37 L100 70 Z" fill={env.paper} />
-        <path d="M0 70 L46 37 Q50 34.5 54 37 L100 70 Z" fill="url(#bottom)" />
-        <path d="M0 70 L46 37 Q50 34.5 54 37 L100 70" fill="none" stroke={env.shade} strokeWidth=".35" />
-      </svg>
-      <div className="pointer-events-none absolute inset-0 rounded-[3px] opacity-70 mix-blend-multiply" style={{ zIndex: 3, backgroundImage: PAPER_GRAIN }} />
+      {/* front pocket (photo) */}
+      <img src={layer("pocket")} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none" style={{ zIndex: 4 }} />
 
-      {/* "from" written on the front */}
+      {/* who it's from: a typed label taped to the front */}
       <motion.div
-        className="pointer-events-none absolute inset-x-0 bottom-[11%] text-center font-hand text-[clamp(18px,5vw,28px)]"
-        style={{ zIndex: 4, color: env.ink }}
+        className="pointer-events-none absolute bottom-[5.5%] left-1/2 -translate-x-1/2"
+        style={{ zIndex: 5 }}
         animate={{ opacity: stage === "rise" ? 0 : 1 }}
       >
-        from {from}
+        <div className="relative -rotate-2 bg-[#f8f4ea] px-[1.1em] py-[0.45em] font-typewriter text-[clamp(12px,3.2vw,17px)] text-ink shadow-[0_1px_2px_rgb(0_0_0/.18),0_4px_8px_-2px_rgb(0_0_0/.15)]"
+          style={{ backgroundImage: PAPER_GRAIN }}>
+          <span className="absolute -top-[0.55em] left-1/2 h-[1.1em] w-[3.4em] -translate-x-1/2 rotate-3 bg-tape/80" />
+          from {from}
+        </div>
       </motion.div>
 
-      {/* top flap: swings up and back, passing behind the letter halfway through */}
+      {/* the flap (photo): swings up and back, passing behind the letter halfway */}
       <motion.div
-        className="absolute inset-x-0 top-0 h-[60%] origin-top"
-        style={{ zIndex: flapOpen ? 1 : 5, transformStyle: "preserve-3d" }}
+        className="absolute inset-0"
+        style={{ zIndex: flapOpen ? 2 : 6, transformStyle: "preserve-3d", originX: 0.5, originY: ENV.body.y / ENV.h }}
         initial={false}
         animate={{ rotateX: flapOpen ? 178 : 0 }}
         transition={{ duration: 0.55, ease: [0.45, 0, 0.2, 1] }}
       >
-        <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", filter: "drop-shadow(0 2px 2px rgb(30 15 0 / .18))" }}>
-          <div className="absolute inset-0" style={{ ...paper, clipPath: "polygon(0 0, 100% 0, 54% 92%, 50% 96%, 46% 92%)" }}>
-            <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgb(255 255 255 / .25), rgb(0 0 0 / .05))" }} />
-          </div>
-        </div>
-        <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", transform: "rotateX(180deg)" }}>
-          <div className="absolute inset-0" style={{ background: `linear-gradient(0deg, ${env.shade}, ${env.inside})`, clipPath: "polygon(0 100%, 100% 100%, 54% 8%, 50% 4%, 46% 8%)" }} />
-        </div>
+        <img src={layer("flap")} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none" style={{ backfaceVisibility: "hidden" }} />
+        {/* inside of the flap: same paper, in shade */}
+        <img src={layer("flap")} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none"
+          style={{ backfaceVisibility: "hidden", transform: "rotateX(180deg)", filter: "brightness(.82) saturate(.9)" }} />
       </motion.div>
 
-      {/* wax seal */}
+      {/* wax seal on the flap tip */}
       <button
         type="button"
         onClick={onOpen}
         disabled={!sealed}
         aria-label="break the seal and open the letter"
-        className="absolute left-1/2 top-[57.5%] w-[22%] -translate-x-1/2 -translate-y-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-transparent disabled:cursor-default"
-        style={{ zIndex: 6 }}
+        className="absolute w-[17%] -translate-x-1/2 -translate-y-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-transparent disabled:cursor-default"
+        style={{ zIndex: 7, left: pct(ENV.tip.x, ENV.w), top: pct(ENV.tip.y - 30, ENV.h) }}
       >
         <WaxSeal stage={stage} />
       </button>
+
+      {/* the push pin from the board pops out first */}
+      <motion.img
+        src={layer("pin")} alt="" draggable={false}
+        className="pointer-events-none absolute inset-0 h-full w-full select-none"
+        style={{ zIndex: 8, originX: 0.5, originY: 0.2 }}
+        initial={{ y: 0, x: 0, rotate: 0, opacity: 1 }}
+        animate={{ y: [0, 6, -70], x: [0, 0, 24], rotate: [0, 0, 28], opacity: [1, 1, 0] }}
+        transition={{ duration: 0.6, delay: 0.45, times: [0, 0.25, 1], ease: "easeOut" }}
+      />
     </motion.div>
   );
 }
