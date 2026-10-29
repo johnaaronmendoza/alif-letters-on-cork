@@ -1,16 +1,27 @@
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Lock, X } from "lucide-react";
-import { countdown, isLocked, sealText, type Letter, type Sticker } from "@/lib/letters";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { X } from "lucide-react";
+import { envelopeFor, type EnvelopeColor, type Letter, type Sticker } from "@/lib/letters";
 import { ease, fadeOut, spring } from "@/lib/motion";
 import { LetterPaper } from "./LetterPaper";
 import { LetterCanvas } from "./LetterCanvas";
 import { backgroundCss, isCanvasLetter, readCanvas } from "@/lib/canvas";
 
+/**
+ * Opening a letter, after the reference video:
+ * sealed → seal cracks + envelope wobbles → flap swings open → folded letter
+ * slides up out of the envelope → it unfolds into the full letter.
+ */
+type Stage = "sealed" | "breaking" | "flap" | "rise" | "open";
+const TIMELINE: [Stage, number][] = [["breaking", 0], ["flap", 380], ["rise", 900], ["open", 1650]];
+
+const PAPER_GRAIN =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .25 0 0 0 0 .2 0 0 0 .12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E\")";
+
 /** Offset that places the centered envelope back over the item that was tapped. */
 function fromOrigin(origin: DOMRect | undefined) {
   if (typeof window === "undefined" || !origin) return { x: 0, y: 40, scale: 0.6 };
-  const width = Math.min(448, window.innerWidth - 32);
+  const width = Math.min(440, window.innerWidth - 40);
   return {
     x: origin.left + origin.width / 2 - window.innerWidth / 2,
     y: origin.top + origin.height / 2 - window.innerHeight / 2,
@@ -20,119 +31,273 @@ function fromOrigin(origin: DOMRect | undefined) {
 
 export function LetterOpen({ letter, origin, onClose }: { letter: Letter; origin?: DOMRect; onClose: () => void }) {
   const [start] = useState(() => fromOrigin(origin));
-  const [stage, setStage] = useState<"sealed" | "cracked" | "open">("sealed");
-  const [now, setNow] = useState(Date.now());
-  const locked = isLocked(letter, now);
+  const [stage, setStage] = useState<Stage>("sealed");
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const reduce = useReducedMotion();
+  const env = envelopeFor(letter.id);
 
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const k = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if ((e.key === "Enter" || e.key === " ") && stage === "sealed") { e.preventDefault(); open(); }
+    };
     window.addEventListener("keydown", k);
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => { window.removeEventListener("keydown", k); clearInterval(t); };
-  }, [onClose]);
+    return () => window.removeEventListener("keydown", k);
+  });
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const crack = () => {
-    if (locked || stage !== "sealed") return;
-    setStage("cracked");
-    setTimeout(() => setStage("open"), 820);
+  const open = () => {
+    if (stage !== "sealed") return;
+    if (reduce) { setStage("open"); return; }
+    timers.current = TIMELINE.map(([s, at]) => setTimeout(() => setStage(s), at));
   };
+
+  const flapOpen = stage === "flap" || stage === "rise";
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/70 p-4 backdrop-blur-sm"
-      initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.25, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }}
+      className="fixed inset-0 z-50 overflow-y-auto"
+      initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.3, ease: ease.out } }} exit={{ opacity: 0, transition: fadeOut }}
       onClick={onClose}
       role="dialog" aria-modal="true" aria-label={`letter from ${letter.from_name}`}
     >
-      <button onClick={onClose} aria-label="close" className="fixed right-4 top-4 z-10 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-cream text-ink shadow-item transition-transform duration-200 hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-cream focus-visible:ring-offset-2 focus-visible:ring-offset-ink">
+      {/* soft, warm backdrop instead of a flat dark wash */}
+      <div className="fixed inset-0 bg-[#1c140e]/55 backdrop-blur-md" />
+      <div className="pointer-events-none fixed inset-0" style={{ background: `radial-gradient(ellipse at 50% 45%, ${env.paper}33 0%, transparent 60%)` }} />
+
+      <button onClick={onClose} aria-label="close"
+        className="fixed right-4 top-4 z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-full bg-white/90 text-ink shadow-item backdrop-blur transition-transform duration-200 hover:scale-105 active:scale-95">
         <X className="h-5 w-5" />
       </button>
-      <div onClick={(e) => e.stopPropagation()} className="relative my-auto w-full max-w-xl">
-        <AnimatePresence mode="wait">
-          {stage !== "open" ? (
-            <motion.div
-              key="env"
-              initial={{ ...start, rotate: letter.rotation, opacity: 0.4 }}
-              animate={{ x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }}
-              exit={{ y: 60, opacity: 0, transition: { duration: 0.22, ease: ease.in } }}
-              transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
-              className="relative mx-auto aspect-[4/3] w-full max-w-md paper-kraft shadow-paper"
-              style={{ perspective: 800 }}
-            >
+
+      <div className="relative flex min-h-full items-center justify-center px-5 py-16">
+        <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl">
+          <AnimatePresence mode="wait">
+            {stage !== "open" ? (
               <motion.div
-                className="absolute inset-x-0 top-0 h-[60%] origin-top"
-                animate={stage === "cracked" ? { rotateX: 180 } : { rotateX: 0 }}
-                transition={{ delay: 0.3, duration: 0.45, ease: ease.out }}
-                style={{ transformStyle: "preserve-3d" }}
+                key="envelope"
+                initial={{ ...start, rotate: letter.rotation, opacity: 0.5 }}
+                animate={{ x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }}
+                exit={{ y: 140, opacity: 0, scale: 0.94, transition: { duration: 0.3, ease: ease.in } }}
+                transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
+                className="mx-auto w-full max-w-[440px]"
               >
-                <svg viewBox="0 0 100 60" preserveAspectRatio="none" className="h-full w-full drop-shadow">
-                  <path d="M0 0 L50 58 L100 0 Z" className="fill-kraft-dark" />
-                </svg>
+                <Envelope env={env} stage={stage} flapOpen={flapOpen} from={letter.from_name} onOpen={open} />
+                <motion.p
+                  animate={{ opacity: stage === "sealed" ? 1 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-8 text-center font-clean text-sm tracking-wide text-white/85"
+                >
+                  tap the seal to open
+                </motion.p>
               </motion.div>
-              <p className="absolute inset-x-0 bottom-6 text-center font-hand text-2xl text-ink">
-                from {letter.from_name}
-              </p>
-              <button
-                onClick={crack}
-                disabled={locked}
-                className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-4 focus-visible:ring-offset-kraft disabled:cursor-not-allowed"
-                aria-label={locked ? "locked" : "break the seal"}
-              >
-                {stage === "sealed" ? (
-                  <motion.span
-                    whileHover={locked ? {} : { scale: 1.08, transition: spring.soft }}
-                    whileTap={locked ? {} : { scale: 0.94, transition: spring.snappy }}
-                    animate={locked ? {} : { scale: [1, 1.07, 1] }}
-                    transition={{ duration: 0.7, ease: "easeInOut", delay: 0.6, repeat: 2, repeatDelay: 1.6 }}
-                    className="grid h-20 w-20 place-items-center rounded-full text-3xl shadow-pin"
-                    style={{ background: `radial-gradient(circle at 35% 30%, color-mix(in oklab, ${letter.seal_color} 55%, white), ${letter.seal_color} 65%)`, color: sealText(letter.seal_color) }}
-                  >
-                    {locked ? <Lock className="h-8 w-8" /> : letter.seal_symbol}
-                  </motion.span>
-                ) : (
-                  <span className="relative block h-20 w-20">
-                    {[-1, 1].map((d) => (
-                      <motion.span
-                        key={d}
-                        initial={{ x: 0, rotate: 0, opacity: 1 }}
-                        animate={{ x: d * 34, y: 26, rotate: d * 28, opacity: 0 }}
-                        transition={{ duration: 0.55, ease: ease.out }}
-                        className="absolute top-0 h-20 w-10 text-3xl"
-                        style={{ left: d < 0 ? 0 : 40, background: letter.seal_color, borderRadius: d < 0 ? "40px 0 0 40px" : "0 40px 40px 0" }}
-                      />
-                    ))}
-                  </span>
-                )}
-              </button>
-              {locked && letter.unlock_at && (
-                <div className="absolute inset-x-0 -bottom-20 text-center font-hand text-2xl text-cream">
-                  opens in {countdown(letter.unlock_at, now)}
-                  <div className="font-clean text-xs opacity-75">on {new Date(letter.unlock_at).toLocaleString()}</div>
-                </div>
-              )}
-              {!locked && stage === "sealed" && (
-                <p className="absolute inset-x-0 -bottom-12 text-center font-hand text-xl text-cream">tap the seal to open ♡</p>
-              )}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="letter"
-              initial={{ y: 90, rotate: -2, opacity: 0 }}
-              animate={{ y: 0, rotate: 0, opacity: 1 }}
-              transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
-            >
-              {isCanvasLetter(letter.stickers) ? (
-                <div className="rounded-2xl p-5 shadow-paper sm:p-8" style={{ background: backgroundCss(letter.paper_style) }}>
-                  <LetterCanvas elements={readCanvas(letter.stickers).elements} mode="view" />
-                  <p className="mt-4 text-center font-hand text-2xl text-ink drop-shadow-[0_1px_0_rgb(255_255_255/.6)]">— {letter.from_name}</p>
-                </div>
-              ) : (
-                <LetterPaper data={{ ...letter, stickers: (letter.stickers as Sticker[]) ?? [] }} />
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ) : (
+              <motion.div key="letter" className="relative mx-auto w-full">
+                <OpenedLetter letter={letter} env={env} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
+    </motion.div>
+  );
+}
+
+// ── the envelope ──────────────────────────────────────────────────
+
+function Envelope({ env, stage, flapOpen, from, onOpen }: {
+  env: EnvelopeColor; stage: Stage; flapOpen: boolean; from: string; onOpen: () => void;
+}) {
+  const sealed = stage === "sealed";
+  const paper = { backgroundColor: env.paper, backgroundImage: PAPER_GRAIN };
+
+  return (
+    <motion.div
+      // a small "something's coming" wobble when the seal breaks
+      animate={stage === "breaking" ? { rotate: [0, -2.5, 2, -1, 0], y: [0, -4, 0] } : { rotate: 0, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeInOut" }}
+      className="relative aspect-[10/7] w-full"
+      style={{ perspective: 1400 }}
+    >
+      {/* inside of the envelope, seen once the flap is up */}
+      <div className="absolute inset-0 rounded-[3px]" style={{ background: `linear-gradient(180deg, ${env.inside}, ${env.shade})`, boxShadow: "0 24px 50px -18px rgb(20 10 0 / .55), 0 6px 14px rgb(20 10 0 / .25)" }} />
+
+      {/* the folded letter, tucked inside */}
+      <motion.div
+        className="absolute inset-x-[7%] top-[6%] h-[82%] rounded-[2px] bg-[#fdfbf6]"
+        style={{ zIndex: 2, backgroundImage: PAPER_GRAIN, boxShadow: "0 2px 6px rgb(0 0 0 / .12)" }}
+        animate={stage === "rise" ? { y: "-58%" } : { y: "0%" }}
+        transition={{ type: "spring", stiffness: 120, damping: 18 }}
+      >
+        {/* fold creases and a hint of handwriting */}
+        <div className="absolute inset-x-0 top-1/3 h-px bg-black/[.07] shadow-[0_1px_0_rgb(255_255_255/.8)]" />
+        <div className="absolute inset-x-0 top-2/3 h-px bg-black/[.07] shadow-[0_1px_0_rgb(255_255_255/.8)]" />
+        <div className="absolute left-[10%] top-[10%] font-hand text-[clamp(14px,4vw,22px)] text-ink/70">dear alif,</div>
+        <div className="absolute inset-x-[10%] top-[22%] space-y-[6%]">
+          {[88, 72, 80].map((w, i) => <div key={i} className="h-[2px] rounded-full bg-ink/10" style={{ width: `${w}%` }} />)}
+        </div>
+      </motion.div>
+
+      {/* front pocket: side and bottom folds */}
+      <svg viewBox="0 0 100 70" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" style={{ zIndex: 3 }} aria-hidden>
+        <defs>
+          <linearGradient id="side-l" x1="0" x2="1"><stop offset="0" stopColor="#fff" stopOpacity=".22" /><stop offset="1" stopColor="#000" stopOpacity=".04" /></linearGradient>
+          <linearGradient id="side-r" x1="1" x2="0"><stop offset="0" stopColor="#000" stopOpacity=".08" /><stop offset="1" stopColor="#000" stopOpacity=".02" /></linearGradient>
+          <linearGradient id="bottom" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#000" stopOpacity=".06" /><stop offset="1" stopColor="#fff" stopOpacity=".18" /></linearGradient>
+        </defs>
+        <path d="M0 0 L47 38 Q50 40 53 38 L100 0 V70 H0 Z" fill={env.paper} />
+        <path d="M0 0 L46 39 L0 70 Z" fill="url(#side-l)" />
+        <path d="M100 0 L54 39 L100 70 Z" fill="url(#side-r)" />
+        <path d="M0 70 L46 37 Q50 34.5 54 37 L100 70 Z" fill={env.paper} />
+        <path d="M0 70 L46 37 Q50 34.5 54 37 L100 70 Z" fill="url(#bottom)" />
+        <path d="M0 70 L46 37 Q50 34.5 54 37 L100 70" fill="none" stroke={env.shade} strokeWidth=".35" />
+      </svg>
+      <div className="pointer-events-none absolute inset-0 rounded-[3px] opacity-70 mix-blend-multiply" style={{ zIndex: 3, backgroundImage: PAPER_GRAIN }} />
+
+      {/* "from" written on the front */}
+      <motion.div
+        className="pointer-events-none absolute inset-x-0 bottom-[11%] text-center font-hand text-[clamp(18px,5vw,28px)]"
+        style={{ zIndex: 4, color: env.ink }}
+        animate={{ opacity: stage === "rise" ? 0 : 1 }}
+      >
+        from {from}
+      </motion.div>
+
+      {/* top flap: swings up and back, passing behind the letter halfway through */}
+      <motion.div
+        className="absolute inset-x-0 top-0 h-[60%] origin-top"
+        style={{ zIndex: flapOpen ? 1 : 5, transformStyle: "preserve-3d" }}
+        initial={false}
+        animate={{ rotateX: flapOpen ? 178 : 0 }}
+        transition={{ duration: 0.55, ease: [0.45, 0, 0.2, 1] }}
+      >
+        <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", filter: "drop-shadow(0 2px 2px rgb(30 15 0 / .18))" }}>
+          <div className="absolute inset-0" style={{ ...paper, clipPath: "polygon(0 0, 100% 0, 54% 92%, 50% 96%, 46% 92%)" }}>
+            <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgb(255 255 255 / .25), rgb(0 0 0 / .05))" }} />
+          </div>
+        </div>
+        <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", transform: "rotateX(180deg)" }}>
+          <div className="absolute inset-0" style={{ background: `linear-gradient(0deg, ${env.shade}, ${env.inside})`, clipPath: "polygon(0 100%, 100% 100%, 54% 8%, 50% 4%, 46% 8%)" }} />
+        </div>
+      </motion.div>
+
+      {/* wax seal */}
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={!sealed}
+        aria-label="break the seal and open the letter"
+        className="absolute left-1/2 top-[57.5%] w-[19%] -translate-x-1/2 -translate-y-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-transparent disabled:cursor-default"
+        style={{ zIndex: 6 }}
+      >
+        <WaxSeal stage={stage} />
+      </button>
+    </motion.div>
+  );
+}
+
+const SEAL_EDGE = (() => {
+  // irregular, slightly lumpy wax outline
+  const pts: string[] = [];
+  for (let i = 0; i < 36; i++) {
+    const a = (i / 36) * Math.PI * 2;
+    const r = 46 + Math.sin(i * 2.7) * 2.2 + Math.cos(i * 1.3) * 1.6;
+    pts.push(`${(50 + Math.cos(a) * r).toFixed(1)},${(50 + Math.sin(a) * r).toFixed(1)}`);
+  }
+  return `M${pts.join(" L")} Z`;
+})();
+
+function WaxSeal({ stage }: { stage: Stage }) {
+  const broken = stage !== "sealed";
+  const face = (
+    <svg viewBox="0 0 100 100" className="block w-full overflow-visible" aria-hidden>
+      <defs>
+        <radialGradient id="wax" cx="38%" cy="32%" r="75%">
+          <stop offset="0" stopColor="#f3d488" />
+          <stop offset=".45" stopColor="#c9963c" />
+          <stop offset="1" stopColor="#7d561c" />
+        </radialGradient>
+      </defs>
+      <path d={SEAL_EDGE} fill="url(#wax)" style={{ filter: "drop-shadow(0 3px 3px rgb(40 20 0 / .45))" }} />
+      <circle cx="50" cy="50" r="31" fill="none" stroke="#7d561c" strokeOpacity=".55" strokeWidth="2.2" />
+      <circle cx="50" cy="50" r="31" fill="none" stroke="#fbe7ad" strokeOpacity=".5" strokeWidth="1" transform="translate(-.8 -.8)" />
+      {/* embossed heart: dark recess plus a light catch on the upper edge */}
+      <path d="M50 66 C36 56 31 47 36 40 C40 35 47 36 50 42 C53 36 60 35 64 40 C69 47 64 56 50 66 Z" fill="#a8792c" stroke="#6e4a16" strokeWidth="1.6" />
+      <path d="M50 66 C36 56 31 47 36 40 C40 35 47 36 50 42" fill="none" stroke="#fbe7ad" strokeOpacity=".7" strokeWidth="1" transform="translate(-.6 -.8)" />
+    </svg>
+  );
+  if (!broken) {
+    return (
+      <motion.span
+        className="block"
+        // a gentle "tap me" pulse, three times, then it rests
+        animate={{ scale: [1, 1.06, 1] }}
+        transition={{ duration: 0.8, ease: "easeInOut", delay: 0.7, repeat: 2, repeatDelay: 1.4 }}
+        whileHover={{ scale: 1.07, transition: spring.snappy }}
+        whileTap={{ scale: 0.92, transition: spring.snappy }}
+      >
+        {face}
+      </motion.span>
+    );
+  }
+  return (
+    <span className="relative block">
+      {[-1, 1].map((side) => (
+        <motion.span
+          key={side}
+          className="absolute inset-0 block"
+          style={{ clipPath: side < 0 ? "polygon(0 0, 52% 0, 46% 38%, 54% 60%, 47% 100%, 0 100%)" : "polygon(52% 0, 100% 0, 100% 100%, 47% 100%, 54% 60%, 46% 38%)" }}
+          initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
+          animate={{ x: side * 26, y: 70, rotate: side * 38, opacity: 0 }}
+          transition={{ duration: 0.6, ease: [0.4, 0, 0.9, 0.6] }}
+        >
+          {face}
+        </motion.span>
+      ))}
+      <span className="invisible block">{face}</span>
+    </span>
+  );
+}
+
+// ── the opened letter ────────────────────────────────────────────
+
+function OpenedLetter({ letter, env }: { letter: Letter; env: EnvelopeColor }) {
+  const canvas = isCanvasLetter(letter.stickers);
+  return (
+    <motion.div
+      initial={{ y: 60, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ ...spring.soft, opacity: { duration: 0.2 } }}
+    >
+      <div className="mb-4 flex items-center justify-center gap-3 text-white/85">
+        <span className="h-px w-10 bg-white/40" />
+        <span className="font-clean text-xs uppercase tracking-[0.25em]">from {letter.from_name}</span>
+        <span className="h-px w-10 bg-white/40" />
+      </div>
+
+      {/* unfolds from its middle third, like a tri-folded letter opening up */}
+      <motion.div
+        initial={{ clipPath: "inset(33.4% 0% 33.4% 0% round 18px)" }}
+        animate={{ clipPath: "inset(0% 0% 0% 0% round 18px)" }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+        className="relative"
+      >
+        {canvas ? (
+          <div className="rounded-[18px] p-4 sm:p-7" style={{ background: backgroundCss(letter.paper_style), boxShadow: "0 30px 60px -20px rgb(0 0 0 / .55)" }}>
+            <LetterCanvas elements={readCanvas(letter.stickers).elements} mode="view" />
+          </div>
+        ) : (
+          <div className="rounded-[18px] p-4 sm:p-7" style={{ background: env.paper, boxShadow: "0 30px 60px -20px rgb(0 0 0 / .55)" }}>
+            <LetterPaper data={{ ...letter, stickers: (letter.stickers as Sticker[]) ?? [] }} />
+          </div>
+        )}
+        {/* crease shadows that fade as the paper flattens */}
+        {[33.4, 66.6].map((top) => (
+          <motion.div key={top} className="pointer-events-none absolute inset-x-0 h-6 -translate-y-1/2"
+            style={{ top: `${top}%`, background: "linear-gradient(180deg, transparent, rgb(0 0 0 / .14), transparent)" }}
+            initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ duration: 0.9, delay: 0.55 }} />
+        ))}
+      </motion.div>
     </motion.div>
   );
 }

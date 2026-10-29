@@ -88,6 +88,24 @@ export function jitter(id: string, salt = 0) {
 
 export type BoardSpot = { x: number; y: number; r: number };
 
+/**
+ * Envelope colors. `name` matches the photo in /public/board/envelopes; the rest
+ * are sampled from those photos so the opened envelope matches the one on the board.
+ */
+export const ENVELOPE_COLORS = [
+  { name: "sage", paper: "#cbd6c3", shade: "#aebba5", inside: "#9dac94", ink: "#3d4a37" },
+  { name: "butter", paper: "#efd29f", shade: "#d8b77c", inside: "#c4a066", ink: "#5a4421" },
+  { name: "white", paper: "#ece8dc", shade: "#d3cebf", inside: "#bdb7a6", ink: "#4a4538" },
+  { name: "pink", paper: "#eeb2a9", shade: "#d6948a", inside: "#c07f76", ink: "#5e2f29" },
+  { name: "blue", paper: "#b4cadb", shade: "#93acc1", inside: "#7f99b0", ink: "#2d4357" },
+] as const;
+export type EnvelopeColor = (typeof ENVELOPE_COLORS)[number];
+
+/** The envelope a letter is shown in, stable per letter. */
+export function envelopeFor(id: string): EnvelopeColor {
+  return ENVELOPE_COLORS[Math.floor((jitter(id, 7) + 1) * 2.5) % ENVELOPE_COLORS.length]!;
+}
+
 /** Places letters (oldest first) and returns the board height in % of the collage height. */
 export function layoutBoard(ls: Pick<Letter, "id" | "created_at">[]) {
   const ordered = [...ls].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));

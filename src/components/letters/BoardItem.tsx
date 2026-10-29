@@ -1,12 +1,10 @@
 import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
 import { PIN_ORIGIN, ease, spring } from "@/lib/motion";
-import { isLocked, jitter, type BoardSpot, type Letter } from "@/lib/letters";
+import { envelopeFor, isLocked, jitter, type BoardSpot, type Letter } from "@/lib/letters";
 import { isCanvasLetter } from "@/lib/canvas";
 import { useMedia } from "./LetterPaper";
 
-/** Pinned envelope photos (each already has its push pin). */
-const ENVELOPES = ["sage", "butter", "white", "pink", "blue"];
 const PINS = ["#2bb3a3", "#f2c230", "#d9483b", "#a77bd6", "#d9483b"];
 const pick = <T,>(list: T[], id: string, salt: number) => list[Math.floor((jitter(id, salt) + 1) * 2.5) % list.length]!;
 
@@ -41,7 +39,7 @@ export function BoardItem({
   const photocard = isCanvasLetter(letter.stickers) && !!letter.photo_url;
   const photo = useMedia(photocard ? letter.photo_url : null);
   const locked = isLocked(letter);
-  const env = pick(ENVELOPES, letter.id, 7);
+  const env = envelopeFor(letter.id).name;
   const pin = pick(PINS, letter.id, 9);
   const r = spot.r;
 
