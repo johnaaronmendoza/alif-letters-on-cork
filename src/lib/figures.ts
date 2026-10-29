@@ -1,13 +1,16 @@
 /**
- * Wall decorations around the corkboard. Swap `src` for your own cut-out PNGs
- * (put them in /public/figures). x/y are % of the room; rotation in degrees.
+ * Figures that sit around the corkboard. Images live in /public/figures.
+ * x: horizontal position of the figure's base, in % of the page width
+ *    (the board itself spans roughly 10%–90%).
+ * y: where the base rests, as CSS from the top of the board — px for things
+ *    sitting on the top frame (so they stay put as the board grows), % otherwise.
+ * w: width in % of the page width. rotation in degrees.
  */
-export type Figure = { src: string; x: number; y: number; rotation: number; scale: number; alt: string };
+export type Figure = { src: string; alt: string; x: number; y: string; w: number; rotation: number };
 
 export const FIGURES: Figure[] = [
-  { src: "/figures/placeholder-1.svg", x: 2.5, y: 46, rotation: -4, scale: 1, alt: "figure on the shelf" },
-  { src: "/figures/placeholder-2.svg", x: 6.5, y: 48, rotation: 5, scale: 0.8, alt: "figure on the shelf" },
-  { src: "/figures/placeholder-3.svg", x: 70, y: 4.5, rotation: 3, scale: 0.75, alt: "figure on the frame" },
-  { src: "/figures/placeholder-4.svg", x: 88, y: 82, rotation: -10, scale: 0.9, alt: "figure peeking" },
-  { src: "/figures/placeholder-5.svg", x: 93, y: 40, rotation: 6, scale: 0.7, alt: "figure on the wall" },
+  { src: "/figures/mints.webp", alt: "a tin of Eclipse mints", x: 33, y: "14px", w: 8.5, rotation: -6 },
+  { src: "/figures/money-gun.webp", alt: "a money gun spraying cash", x: 74, y: "12px", w: 8, rotation: -8 },
+  { src: "/figures/cigarettes.webp", alt: "a pack of Gudang Garam with a lighter", x: 91.5, y: "42%", w: 7, rotation: 7 },
+  { src: "/figures/doll.webp", alt: "a little doll figure", x: 12, y: "calc(100% - 10px)", w: 8, rotation: 0 },
 ];

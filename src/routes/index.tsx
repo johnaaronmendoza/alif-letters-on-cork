@@ -82,19 +82,24 @@ function Room() {
       </button>
 
       <section className="relative mx-auto mt-6 w-full sm:mt-4">
-        {/* shelf */}
-        <div className="pointer-events-none absolute left-[1%] top-[64%] z-0 hidden h-3 w-[11%] rounded-sm bg-wood shadow-item lg:block" />
         {FIGURES.map((f, i) => (
-          <motion.img
-            key={i} src={f.src} alt={f.alt} draggable={false}
-            className="absolute z-20 hidden w-[6%] cursor-pointer select-none drop-shadow-lg md:block"
-            style={{ left: `${f.x}%`, top: `${f.y}%`, rotate: f.rotation, scale: f.scale }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: ease.out, delay: 0.2 + i * 0.06 }}
-            whileHover={{ rotate: [f.rotation, f.rotation - 8, f.rotation + 6, f.rotation], y: -4, transition: { duration: 0.5, ease: ease.out } }}
-            whileTap={{ rotate: [f.rotation, f.rotation - 12, f.rotation + 10, f.rotation], scale: f.scale * 1.08, transition: { duration: 0.45, ease: ease.out } }}
-          />
+          // Static wrapper anchors the figure by its base; the image inside does the motion.
+          <div
+            key={f.src}
+            className="pointer-events-none absolute z-20 hidden -translate-x-1/2 -translate-y-full md:block"
+            style={{ left: `${f.x}%`, top: f.y, width: `${f.w}%` }}
+          >
+            <motion.img
+              src={f.src} alt={f.alt} draggable={false} loading="lazy"
+              className="pointer-events-auto block w-full cursor-pointer select-none drop-shadow-[0_8px_10px_rgb(40_25_10/.35)]"
+              style={{ originX: 0.5, originY: 1 }}
+              initial={{ opacity: 0, y: 12, rotate: f.rotation }}
+              animate={{ opacity: 1, y: 0, rotate: f.rotation }}
+              transition={{ duration: 0.5, ease: ease.out, delay: 0.2 + i * 0.06 }}
+              whileHover={{ rotate: [f.rotation, f.rotation - 7, f.rotation + 5, f.rotation], y: -4, transition: { duration: 0.5, ease: ease.out } }}
+              whileTap={{ rotate: [f.rotation, f.rotation - 11, f.rotation + 9, f.rotation], scale: 1.08, transition: { duration: 0.45, ease: ease.out } }}
+            />
+          </div>
         ))}
 
         <div className="overflow-x-auto px-4 pb-4 sm:px-0">
