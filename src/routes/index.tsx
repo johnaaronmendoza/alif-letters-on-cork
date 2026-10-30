@@ -299,7 +299,7 @@ function Room() {
             button below, fits in the window */}
         <div>
           <div
-            className="relative mx-auto w-[min(76vw,calc((100svh-15rem)*1.78))] min-w-[600px]"
+            className="relative mx-auto w-[min(76vw,calc((100svh-15rem)*1.78))] md:min-w-[600px]"
             style={{ containerType: "inline-size" }}
           >
             {/* figures sit on the board's corners, positioned relative to the board itself */}
