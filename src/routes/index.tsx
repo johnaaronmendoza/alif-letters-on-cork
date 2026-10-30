@@ -72,6 +72,8 @@ export const Route = createFileRoute("/")({
 
 function Room() {
   const [letters, setLetters] = useState<Letter[]>([]);
+  // "loading" until the first fetch answers, so a failed load never reads as an empty board
+  const [load, setLoad] = useState<"loading" | "ok" | "error">("loading");
   const [newIds, setNewIds] = useState(() => new Set<string>());
   const [open, setOpen] = useState<{ letter: Letter; rect?: DOMRect; dir: 0 | 1 | -1 } | null>(null);
   // letters this viewer has opened (kept in this browser), so read envelopes look opened
@@ -183,8 +185,13 @@ function Room() {
 
   useEffect(() => {
     setMuted(localStorage.getItem("alif-muted") === "1");
-    supabase.from("letters").select("*").order("created_at").then(({ data }) => {
-      if (!data) return;
+    supabase.from("letters").select("*").order("created_at").then(({ data, error }) => {
+      if (error || !data) {
+        console.error("[letters] could not load the board", error);
+        setLoad("error");
+        return;
+      }
+      setLoad("ok");
       data.forEach((l) => knownIds.current.add(l.id));
       setLetters(data);
     });
@@ -273,7 +280,7 @@ function Room() {
               {intro && <BoardIntro onStamp={stamp} onImpact={nudge} onDone={introDone} />}
             </div>
             {!intro && <BoardFigures muted={muted} layout="shelf" />}
-            {!intro && (letters.length === 0 ? (
+            {!intro && load !== "ok" && letters.length === 0 ? <BoardStatus state={load} /> : !intro && (letters.length === 0 ? (
               <m.p
                 initial={{ opacity: 0, y: -8, rotate: -5 }} animate={{ opacity: 1, y: 0, rotate: -3 }} transition={{ delay: 0.6, ...spring.soft }}
                 className="relative mx-auto mb-10 mt-6 w-fit bg-[#f8f4ea] px-4 py-2 text-center font-typewriter text-sm leading-snug text-ink shadow-[0_2px_4px_rgb(0_0_0/.2),0_8px_14px_-6px_rgb(0_0_0/.3)]"
@@ -321,7 +328,8 @@ function Room() {
                   style={extended ? { maskImage: "linear-gradient(to bottom, #000 95%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 95%, transparent)" } : undefined}
                 />
                 {intro && <BoardIntro onStamp={stamp} onImpact={nudge} onDone={introDone} />}
-                {!intro && letters.length === 0 && (
+                {!intro && load !== "ok" && letters.length === 0 && <div className="absolute left-[3%] top-[5%] z-10"><BoardStatus state={load} /></div>}
+                {!intro && load === "ok" && letters.length === 0 && (
                   <m.div
                     initial={{ opacity: 0, y: -10, rotate: -6 }} animate={{ opacity: 1, y: 0, rotate: -4 }} transition={{ delay: 0.6, ...spring.soft }}
                     className="absolute left-[3%] top-[5%] z-10 w-[18%] min-w-[120px] bg-[#f8f4ea] px-[1.2%] py-[1%] text-center font-typewriter text-[clamp(10px,1vw,14px)] leading-snug text-ink shadow-[0_2px_4px_rgb(0_0_0/.2),0_8px_14px_-6px_rgb(0_0_0/.3)]"
@@ -402,6 +410,16 @@ function Opening() {
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink/20 border-t-ink" aria-hidden />
         opening…
       </span>
+    </div>
+  );
+}
+
+function BoardStatus({ state }: { state: "loading" | "error" | "ok" }) {
+  if (state === "loading") return <p className="mx-auto my-6 w-fit font-typewriter text-sm text-cream/90" role="status">unpinning letters…</p>;
+  return (
+    <div role="alert" className="relative mx-auto my-6 w-fit max-w-[260px] bg-[#f8f4ea] px-4 py-3 text-center font-typewriter text-sm leading-snug text-ink shadow-[0_2px_4px_rgb(0_0_0/.2),0_8px_14px_-6px_rgb(0_0_0/.3)]">
+      couldn&apos;t load the letters.
+      <button type="button" onClick={() => window.location.reload()} className="mt-2 block w-full min-h-11 underline underline-offset-4">try again</button>
     </div>
   );
 }
